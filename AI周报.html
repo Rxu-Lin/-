@@ -1,0 +1,2471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>素材数据透视工具 · L'Oréal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 55%,#0f3460 100%);color:#fff;padding:18px 32px;display:flex;align-items:center;gap:14px}
+header .logo{font-size:30px}
+header h1{font-size:19px;font-weight:700;letter-spacing:.4px}
+header p{font-size:11px;opacity:.65;margin-top:3px}
+.page{max-width:1440px;margin:0 auto;padding:22px 18px}
+.upload-zone{border:2px dashed #c5ccd8;border-radius:14px;background:#fff;padding:44px 24px;text-align:center;cursor:pointer;transition:all .25s;margin-bottom:20px;position:relative}
+.upload-zone:hover,.upload-zone.over{border-color:#e32119;background:#fff5f5;box-shadow:0 6px 24px rgba(227,33,25,.13);transform:translateY(-2px)}
+.upload-zone .ico{font-size:46px;margin-bottom:10px}
+.upload-zone h2{font-size:17px;color:#333;margin-bottom:7px}
+.upload-zone p{color:#999;font-size:13px}
+.upload-zone .tag{display:inline-block;margin-top:14px;padding:8px 20px;background:#f7f8fb;border-radius:8px;font-size:11px;color:#666}
+.upload-zone>*:not(input){pointer-events:none}
+#fi{display:none}
+.status{display:none;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:12px 18px;margin-bottom:18px;border-left:4px solid #e32119;box-shadow:0 2px 8px rgba(0,0,0,.06);font-size:13px;color:#444}
+.status.show{display:flex}
+.status.ok{border-left-color:#52c41a}
+.status.err{border-left-color:#e74c3c}
+.status.warn{border-left-color:#f0a500}
+.spin{width:18px;height:18px;border:3px solid #eee;border-top-color:#e32119;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+.status.ok .spin,.status.err .spin,.status.warn .spin{display:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.calc-warn-bar{display:none;align-items:flex-start;gap:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#7d5a00;line-height:1.7}
+.calc-warn-bar.show{display:flex}
+.calc-warn-bar .cw-ico{font-size:18px;flex-shrink:0;margin-top:1px}
+.calc-warn-bar ul{margin:4px 0 0 2px;padding-left:14px}
+.calc-warn-bar li{margin-bottom:2px}
+.calc-warn-bar code{background:#ffe082;border-radius:3px;padding:0 4px;font-size:11px}
+.cards{display:none;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.card{background:#fff;border-radius:10px;padding:15px 18px;border-left:4px solid #e32119;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.card .lbl{font-size:11px;color:#999;margin-bottom:4px}
+.card .val{font-size:22px;font-weight:700;color:#1a1a2e}
+.tabs{display:none;gap:3px;margin-bottom:0}
+.tbtn{padding:9px 22px;border-radius:9px 9px 0 0;border:none;background:#dde2ea;color:#666;font-size:13px;cursor:pointer;font-weight:500;transition:all .2s}
+.tbtn.active{background:#fff;color:#e32119;font-weight:700}
+.tbtn:hover:not(.active){background:#cdd2db}
+.tp{background:#fff;border-radius:0 12px 12px 12px;padding:18px;display:none;box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.tp.active{display:block}
+.anomaly-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:#f8f9fb;border-radius:9px;padding:10px 14px;border:1px solid #e8eaef;margin-bottom:8px}
+.bar-label{font-size:12px;font-weight:700;color:#444;white-space:nowrap}
+.anomaly-sel{padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;background:#fff;cursor:pointer;outline:none}
+.anomaly-sel:focus{border-color:#e32119}
+.btn-detect{padding:5px 14px;background:#e32119;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+.btn-detect:hover{background:#c0392b}
+.btn-clear-a{padding:5px 14px;background:#fff;color:#666;border:1px solid #ddd;border-radius:6px;font-size:12px;cursor:pointer}
+.btn-clear-a:hover{border-color:#e32119;color:#e32119}
+.anom-info{font-size:11px;padding:3px 10px;border-radius:12px;display:none}
+.anom-info.show{display:inline-block;background:#fff3cd;color:#856404}
+.anom-info.ok{display:inline-block;background:#e8f5e9;color:#2e7d32}
+.data-toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 6px;gap:8px;flex-wrap:wrap}
+.filter-stats{font-size:11px;color:#888}
+.edit-tip{color:#bbb;font-size:11px;margin-left:6px}
+.toolbar-right{display:flex;gap:6px;align-items:center}
+.btn-clear-f{display:none;padding:4px 10px;background:#fff;color:#888;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer}
+.btn-clear-f.show{display:inline-block}
+.btn-clear-f:hover{border-color:#e32119;color:#e32119}
+.btn-export{padding:4px 12px;background:#fff;color:#1a73e8;border:1px solid #1a73e8;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn-export:hover{background:#e8f0fe}
+.twrap{overflow:auto;max-height:520px;border:1px solid #eee;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+thead tr.hdr-row th{position:sticky;top:0;z-index:12;background:#1a1a2e;color:#fff;padding:0;white-space:nowrap}
+thead tr.hdr-row th.sc{background:#c0392b}
+thead tr.hdr-row th.calc-col{background:#1a7a3a}
+.th-inner{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;gap:4px;min-width:64px}
+.th-text{flex:1;text-align:center;font-weight:600;font-size:12.5px;white-space:nowrap}
+.fi-btn{cursor:pointer;font-size:10px;opacity:.55;padding:2px 4px;border-radius:3px;flex-shrink:0;transition:all .15s;line-height:1;user-select:none}
+.fi-btn:hover{opacity:1;background:rgba(255,255,255,.25)}
+.fi-btn.active{opacity:1;color:#ffd700;font-weight:900}
+tbody tr:nth-child(even){background:#fafafa}
+tbody tr:hover{background:#fff4f4}
+td{padding:6px 12px;border-bottom:1px solid #f0f0f0;white-space:nowrap;cursor:text;min-width:60px}
+td.sc{background:#fff5f5;color:#c0392b;font-weight:500}
+td.calc-col{background:#f0fff4;color:#1a7a3a;font-weight:500}
+td[contenteditable]:focus{outline:2px solid #e32119;outline-offset:-1px;background:#fffbf5!important}
+td[contenteditable]:hover:not(:focus){background:#fffef5}
+td.anom{background:#fff3cd!important;color:#7d5a00!important;font-weight:700;border-left:3px solid #ffc107}
+td.anom.sc{background:#ffe8b0!important}
+.tip-more{text-align:center;color:#aaa;font-size:12px;padding:8px}
+.fp-panel{position:fixed;z-index:99999;background:#fff;border:1px solid #ccc;border-radius:9px;width:248px;box-shadow:0 8px 28px rgba(0,0,0,.2);font-size:13px;overflow:hidden;user-select:none}
+.fp-top{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px;background:#f4f5f8;border-bottom:1px solid #eee}
+.fp-title{font-size:12px;font-weight:700;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+.fp-x{border:none;background:none;cursor:pointer;font-size:15px;color:#999;line-height:1;padding:0}
+.fp-x:hover{color:#e32119}
+.fp-search-wrap{padding:8px 10px 5px}
+.fp-search{width:100%;padding:5px 9px;border:1px solid #ddd;border-radius:5px;font-size:12px;outline:none}
+.fp-search:focus{border-color:#e32119}
+.fp-sec-title{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.5px;padding:5px 12px 3px;font-weight:700}
+.fp-color-wrap{border-bottom:1px solid #f0f0f0;padding-bottom:6px}
+.fp-color-opt{display:flex;align-items:center;gap:7px;padding:4px 14px;cursor:pointer;font-size:12px}
+.fp-color-opt:hover{background:#f5f5f5}
+.fp-color-opt input{cursor:pointer}
+.cdot{display:inline-block;width:12px;height:12px;border-radius:2px;border:1px solid #ccc;flex-shrink:0}
+.cdot.hl{background:#fff3cd;border-color:#ffc107}
+.cdot.nm{background:#e8e8e8;border-color:#bbb}
+.fp-all-row{padding:5px 12px 3px;border-top:1px solid #f0f0f0}
+.fp-all-row label{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600}
+.fp-list{max-height:175px;overflow-y:auto;padding:2px 0 4px}
+.fp-item{display:flex;align-items:center;gap:7px;padding:3px 14px;cursor:pointer;font-size:12px}
+.fp-item:hover{background:#f5f5f5}
+.fp-item input{cursor:pointer;flex-shrink:0}
+.fp-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333}
+.fp-val.anom-val{color:#856404;font-weight:600}
+.fp-empty{padding:14px;text-align:center;color:#bbb;font-size:12px}
+.fp-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #eee;background:#f8f9fb}
+.fp-ok{flex:1;padding:5px;background:#e32119;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer}
+.fp-ok:hover{background:#c0392b}
+.fp-clr,.fp-cancel{padding:5px 9px;background:#fff;border:1px solid #ddd;border-radius:5px;font-size:12px;cursor:pointer;color:#666}
+.fp-clr:hover,.fp-cancel:hover{border-color:#e32119;color:#e32119}
+.pcfg{display:grid;grid-template-columns:195px 1fr;gap:16px;margin-bottom:18px}
+.flist{background:#f8f9fb;border-radius:10px;padding:14px;overflow-y:auto;max-height:360px}
+.flist-section-title{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px;margin-top:12px;display:block}
+.flist-section-title:first-child{margin-top:0}
+.flist-hint{font-size:10px;color:#c0c0c0;display:block;margin-bottom:8px}
+.fi{display:inline-flex;align-items:center;gap:4px;margin:2px;padding:5px 10px;background:#fff;border:1px solid #ddd;border-radius:16px;font-size:12px;cursor:grab;user-select:none;transition:border-color .18s,background .18s,opacity .15s}
+.fi:hover{border-color:#e32119;color:#e32119;background:#fff5f5}
+.fi.is-dragging{opacity:.3;cursor:grabbing}
+.fi .grab-ico{font-size:9px;opacity:.35;line-height:1}
+.fi.derived{border-style:dashed;border-color:#9b59b6;color:#7d3c98}
+.fi.derived:hover{border-color:#7d3c98;background:#f5eef8}
+.fi.calc{border-style:dashed;border-color:#27ae60;color:#1a7a3a}
+.fi.calc:hover{border-color:#1a7a3a;background:#f0fff4}
+.pareas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.parea{border:2px dashed #d8dce5;border-radius:10px;padding:11px 12px;min-height:90px;transition:border-color .2s,background .2s}
+.parea.drag-over{border-color:#e32119;background:#fff5f5;border-style:solid}
+.parea-title{font-size:11px;color:#888;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:4px;user-select:none}
+.parea-hint{font-size:10px;color:#c8c8c8;display:block;margin-bottom:7px}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:4px;min-height:26px;align-items:flex-start}
+.sf{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;background:#e32119;color:#fff;border-radius:16px;font-size:12px;cursor:grab;user-select:none;transition:opacity .15s,box-shadow .15s}
+.sf:hover{background:#c0392b}
+.sf.is-dragging{opacity:.25;cursor:grabbing}
+.sf.drop-before{box-shadow:-3px 0 0 #fff2;margin-left:3px}
+.sf.drop-after{box-shadow:3px 0 0 #fff2;margin-right:3px}
+.sf .sh{font-size:9px;opacity:.5;cursor:grab}
+.sf .rx{cursor:pointer;opacity:.8;font-size:11px;margin-left:1px}
+.sf .rx:hover{opacity:1}
+.sf.sf-derived{background:#8e44ad}
+.sf.sf-derived:hover{background:#7d3c98}
+.sf.sf-calc{background:#27ae60}
+.sf.sf-calc:hover{background:#1a7a3a}
+.rv{cursor:pointer;opacity:.65;font-size:10px;margin-left:1px;padding:1px 3px;border-radius:2px;transition:all .15s;line-height:1;user-select:none;flex-shrink:0}
+.rv:hover{opacity:1;background:rgba(255,255,255,.3)}
+.rv.rv-on{opacity:1;color:#ffd700}
+.sf-filtered{outline:2px solid #ffd700;outline-offset:1px}
+.agg-row{display:flex;align-items:center;gap:10px;padding:10px 0 0;border-top:1px solid #eee;flex-wrap:wrap}
+.agsel{padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;background:#fff;cursor:pointer}
+.fmt-btn{padding:5px 13px;background:#fff;color:#555;border:1px solid #ddd;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;transition:all .2s}
+.fmt-btn:hover,.fmt-btn.on{border-color:#e32119;color:#e32119;background:#fff5f5}
+
+/* ★ 格式面板 */
+.fmt-panel{background:#f4f6fb;border:1px solid #e0e4ee;border-radius:9px;padding:14px;margin-top:10px;display:none}
+.fmt-panel.show{display:block}
+.fmt-panel-hd{font-size:12px;font-weight:700;color:#444;margin-bottom:10px}
+.fmt-table{width:100%;border-collapse:collapse;font-size:12px}
+.fmt-table th{background:#e2e6f0;color:#555;padding:6px 10px;text-align:left;font-weight:700;font-size:11px;white-space:nowrap;border-bottom:2px solid #cdd2e0}
+.fmt-table th:not(:first-child){text-align:center}
+.fmt-table td{padding:6px 10px;border-bottom:1px solid #eaecf4;vertical-align:middle;white-space:nowrap}
+.fmt-table td:not(:first-child){text-align:center}
+.fmt-table tr:last-child td{border-bottom:none}
+.fmt-table tr:hover td{background:#eef0f8}
+.fmt-na{color:#ccc;font-size:11px;font-style:italic}
+.fmt-preview-cell{color:#888;font-size:11px;font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;text-align:left!important}
+.fmt-empty-hint{color:#bbb;font-size:12px;text-align:center;padding:16px 0}
+.ffl-badge{font-size:10px;padding:1px 7px;border-radius:3px;font-weight:500;display:inline-block}
+.ffl-auto{background:#e8f5e9;color:#2e7d32}
+.ffl-calc{background:#e8f4ff;color:#1a5aa8}
+
+/* ★ 格式面板下拉框 */
+.fmt-sel{padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:12px;background:#fff;cursor:pointer;outline:none;min-width:64px}
+.fmt-sel:focus{border-color:#e32119}
+
+/* ★ 透视表头行字段筛选按钮 */
+.pth-fbtn{cursor:pointer;font-size:9px;opacity:.5;padding:1px 4px;border-radius:2px;margin-left:5px;transition:all .15s;line-height:1;user-select:none;display:inline-block;vertical-align:middle}
+.pth-fbtn.active{opacity:1;color:#ffd700;font-weight:900}
+
+.genbtn{display:block;width:100%;margin-top:12px;padding:11px;background:linear-gradient(135deg,#e32119,#c0392b);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.4px}
+.genbtn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(227,33,25,.35)}
+.pivot-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;background:#f8f9fb;border:1px solid #e8eaef;border-radius:8px;padding:9px 12px;margin-bottom:6px}
+.pt-lbl{font-size:11px;font-weight:700;color:#555;white-space:nowrap}
+.pt-sel{padding:4px 8px;border:1px solid #ddd;border-radius:5px;font-size:12px;background:#fff;cursor:pointer;outline:none;max-width:130px}
+.pt-sel:focus{border-color:#e32119}
+.pt-sel-sm{padding:4px 5px;border:1px solid #ddd;border-radius:5px;font-size:12px;background:#fff;cursor:pointer;width:64px}
+.pt-inp{width:80px;padding:4px 7px;border:1px solid #ddd;border-radius:5px;font-size:12px;outline:none}
+.pt-inp:focus{border-color:#e32119}
+.pt-btn{padding:4px 11px;border:1px solid #ddd;border-radius:5px;background:#fff;color:#555;font-size:12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.pt-btn:hover{border-color:#e32119;color:#e32119}
+.pt-btn.on{background:#e32119;color:#fff;border-color:#e32119}
+.pt-btn.export{border-color:#1a73e8;color:#1a73e8}
+.pt-btn.export:hover{background:#e8f0fe}
+.pt-sep{width:1px;height:22px;background:#dde0e8;margin:0 2px;flex-shrink:0}
+.rf-tags-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:4px 2px 8px}
+.rf-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#7d5a00;background:#fff8e1;border:1px solid #ffe082;padding:3px 10px;border-radius:4px;white-space:nowrap}
+.rf-tag-clr{cursor:pointer;color:#e32119;font-weight:700;margin-left:2px}
+.rf-tag-clr:hover{text-decoration:underline}
+
+.pout{overflow:auto;max-height:560px;border:1px solid #eee;border-radius:8px}
+.pout table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+.pout thead{position:sticky;top:0;z-index:5}
+.pout thead th{background:#1a1a2e;color:#fff;padding:9px 14px;white-space:nowrap;text-align:center;position:relative}
+.pout thead th.rh{background:#2c3e50;text-align:left;cursor:default}
+.pout thead th.sub{background:#354a5e;font-size:11px;font-weight:400}
+.pout td{padding:7px 14px;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pout td.rl{text-align:left;background:#fafafa}
+.pout tr{position:relative}
+.pout tr:hover td{background:#fff8f8}
+.pout tr.grand-total td{background:#e8eeff;font-weight:700;border-top:2px solid #b8c0e0}
+.pout td.tc{background:#e8eeff!important;font-weight:700}
+.pout tr.lvl-0>td.rl{font-weight:700;background:#eef1f7;color:#1a1a2e}
+.pout tr.lvl-1>td.rl{font-weight:500;background:#f5f7fa}
+.pout tr.lvl-2>td.rl{font-weight:400;background:#fafafa}
+
+/* ★ 拖拽行时的样式辅助器 */
+.pout tr.drag-row-over {outline: 2px dashed #e32119 !important; outline-offset: -2px;}
+.pout tr.is-dragging-row {opacity: 0.45; background: #fff5f5 !important;}
+
+/* ★ 表格列与行拖拽大小句柄 */
+.col-resizer{position:absolute;top:0;right:0;width:5px;cursor:col-resize;user-select:none;height:100%;z-index:1}
+.col-resizer:hover{background:#e32119}
+.row-resizer{position:absolute;bottom:0;left:0;height:4px;cursor:row-resize;user-select:none;width:100%;z-index:1}
+.row-resizer:hover{background:#e32119}
+
+.expand-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;cursor:pointer;color:#e32119;font-size:9px;font-weight:700;border-radius:3px;flex-shrink:0;margin-right:4px;transition:background .15s;vertical-align:middle}
+.expand-btn:hover{background:rgba(227,33,25,.12)}
+.expand-spc{display:inline-block;width:20px;flex-shrink:0;vertical-align:middle}
+.pmeta{text-align:right;font-size:11px;color:#aaa;padding:8px 4px}
+.empty{text-align:center;padding:56px 20px;color:#bbb;font-size:13px}
+.empty .bi{font-size:40px;margin-bottom:10px}
+
+/* ★ 周报自动化样式板 */
+.report-container{display:flex;flex-direction:column;gap:14px}
+.control-panel{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.02)}
+.control-lbl{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:10px;display:block}
+.threshold-builder-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tb-card{display:flex;align-items:center;background:#f1f5f9;padding:6px 12px;border-radius:6px;gap:6px;border:1px solid #cbd5e1}
+.tb-card:hover{border-color:#94a3b8}
+.tb-inp{width:76px;padding:3px 6px;border:1px solid #94a3b8;border-radius:4px;font-size:12px;text-align:center;outline:none}
+.tb-inp:focus{border-color:#e32119;background:#fff}
+.tb-btn-del{cursor:pointer;color:#ef4444;font-weight:700;font-size:12px;margin-left:4px}
+.tb-btn-add{background:#10b981;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.tb-btn-add:hover{background:#059669}
+.report-layout{display:flex;flex-direction:column;gap:16px}
+.report-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn-action{padding:7px 15px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s;border:1px solid transparent;display:inline-flex;align-items:center;gap:4px}
+.btn-primary{background:#e32119;color:#fff}
+.btn-primary:hover{background:#c0392b}
+.btn-secondary{background:#fff;border-color:#cbd5e1;color:#475569}
+.btn-secondary:hover{border-color:#e32119;color:#e32119}
+.report-preview-box{border:1px solid #e2e8f0;border-radius:10px;padding:28px 40px;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.04);max-width:1040px;margin:0 auto}
+.report-html-content{font-family:'PingFang SC',Arial,sans-serif;color:#333;line-height:1.6}
+.report-html-content h1{font-size:24px;font-weight:700;color:#111;margin-bottom:6px;border-bottom:2px solid #1a1a2e;padding-bottom:6px}
+.report-html-content h2{font-size:18px;font-weight:700;color:#1a1a2e;margin-top:24px;margin-bottom:12px;border-left:4px solid #e32119;padding-left:10px}
+.report-html-content p{margin-bottom:12px;font-size:14px}
+.report-html-content table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.report-html-content th{background-color:#1a1a2e;color:#fff;font-weight:600;padding:10px 12px;border:1px solid #ddd;text-align:center}
+.report-html-content td{padding:8px 12px;border:1px solid #ddd;text-align:center}
+.report-html-content tr:nth-child(even){background-color:#f8f9fa}
+.report-html-content .total-row{background-color:#f1f3f7!important;font-weight:700}
+.section-block{position:relative;margin-bottom:20px;padding-bottom:10px}
+.section-block .sec-copy-btn{position:absolute;right:0;top:-4px;opacity:0.2;transition:opacity .15s}
+.section-block:hover .sec-copy-btn{opacity:1}
+.anal-block{background-color:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:16px 20px;margin-top:14px}
+.anal-block h3{font-size:14px;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+
+/* ★ 历史记录面板样式 */
+.history-panel{display:none;background:#fff;border:1px solid #e8eaef;border-radius:10px;padding:14px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.history-panel-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #f0f0f0;padding-bottom:8px}
+.history-list{max-height:120px;overflow-y:auto;font-size:11.5px;color:#555}
+.history-item{display:flex;align-items:center;padding:6px 8px;border-bottom:1px dashed #f0f0f0;gap:8px}
+.history-item:hover{background:#fafafa}
+.history-item-meta{color:#999;font-family:monospace;white-space:nowrap}
+.history-item-col{font-weight:700;color:#e32119}
+.history-item-row{color:#1a73e8;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.history-item-val{font-family:monospace}
+
+/* ★ 透视模板选择样式板 */
+.tpl-container {background:#f8f9fb;border:1px solid #e8eaef;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.tpl-title {font-size:12px;font-weight:700;color:#444}
+.tpl-list {display:flex;flex-wrap:wrap;gap:6px}
+.tpl-btn {padding:4px 10px;background:#fff;border:1px solid #ddd;border-radius:5px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.tpl-btn:hover {border-color:#e32119;color:#e32119;background:#fff5f5}
+.tpl-btn-del {color:#ef4444;cursor:pointer;font-weight:700;margin-left:4px}
+.tpl-btn-del:hover {color:#b91c1c}
+.btn-save-tpl {padding:4px 10px;background:#27ae60;color:#fff;border:none;border-radius:5px;font-size:11.5px;cursor:pointer;font-weight:600}
+.btn-save-tpl:hover {background:#1e7e34}
+
+@media(max-width:760px){
+  .cards{grid-template-columns:1fr 1fr}
+  .pcfg{grid-template-columns:1fr}
+  .pareas{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="fp" class="fp-panel" style="display:none" onclick="event.stopPropagation()">
+  <div class="fp-top">
+    <span class="fp-title" id="fp-title">筛选</span>
+    <button class="fp-x" onclick="closeFP()">✕</button>
+  </div>
+  <div class="fp-search-wrap">
+    <input id="fp-search" class="fp-search" type="text" placeholder="🔍 搜索值…" oninput="fpSearch()">
+  </div>
+  <div id="fp-color-wrap" style="display:none">
+    <div class="fp-sec-title">按颜色筛选</div>
+    <div id="fp-color-body" class="fp-color-wrap"></div>
+    <div style="height:1px;background:#eee;margin:4px 0 0"></div>
+  </div>
+  <div class="fp-sec-title" style="margin-top:3px">按值筛选</div>
+  <div class="fp-all-row"><label><input type="checkbox" id="fp-all-cb" onchange="fpToggleAll(this)"> （全选）</label></div>
+  <div id="fp-list" class="fp-list"></div>
+  <div class="fp-foot">
+    <button class="fp-ok" onclick="applyFP()">确定</button>
+    <button class="fp-clr" onclick="clearFPCol()">清除筛选</button>
+    <button class="fp-cancel" onclick="closeFP()">取消</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">📊</div>
+  <div>
+    <h1>素材数据处理 &amp; 透视表工具</h1>
+    <p>Excel式筛选 · 异常识别 · 公式计算 · 表头行筛选 · 各值独立数字格式 · 周报一键分级复制</p>
+  </div>
+</header>
+
+<div class="page">
+  <div class="upload-zone" id="zone">
+    <div class="ico">📂</div>
+    <h2>拖拽 Excel 文件到此处，或点击选择文件</h2>
+    <p>支持 .xlsx / .xls 格式，自动在所有工作表中识别「素材名称」列</p>
+    <div class="tag">🔧 自动识别任意Sheet中「素材名称」列 → 按「-」分列 → 12列插首 → 末尾新增【3秒播放数】【视频完播数】→ 透视表 + 周报一键生成</div>
+    <input type="file" id="fi" accept=".xlsx,.xls">
+  </div>
+  <div class="status" id="st"><div class="spin"></div><span id="stxt">处理中…</span></div>
+
+  <div class="calc-warn-bar" id="calc-warn-bar">
+    <span class="cw-ico">⚠</span>
+    <div>
+      <strong>部分计算字段因源列缺失而未能生成：</strong>
+      <ul id="calc-warn-list"></ul>
+      <div style="margin-top:6px;color:#9e6b00">请确认 Excel 中包含上述列名（注意全/半角、空格），或展开调试信息查看实际列名。</div>
+      <details style="margin-top:8px">
+        <summary style="cursor:pointer;font-weight:700;color:#7d5a00;font-size:11px">🔍 展开调试信息（查看实际识别到的列名）</summary>
+        <pre id="calc-debug-pre" style="margin:6px 0 0;font-size:10.5px;color:#5a4000;white-space:pre-wrap;word-break:break-all;background:#fff8e1;padding:6px;border-radius:5px"></pre>
+      </details>
+    </div>
+  </div>
+
+  <div class="cards" id="cards">
+    <div class="card"><div class="lbl">📄 数据行数</div><div class="val" id="cRows">-</div></div>
+    <div class="card"><div class="lbl">📋 总列数</div><div class="val" id="cCols">-</div></div>
+    <div class="card"><div class="lbl">📦 素材数量</div><div class="val" id="cMat">-</div></div>
+    <div class="card"><div class="lbl">💰 SPD 总计</div><div class="val" id="cSpd">-</div></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="tbtn active" onclick="sw('data',this)">📋 处理后数据</button>
+    <button class="tbtn" onclick="sw('pivot',this)">📊 数据透视表</button>
+    <button class="tbtn" id="btn-tab-report" onclick="sw('report',this);generateAutoReport()">📝 周报自动化</button>
+  </div>
+  <div class="tp active" id="tp-data"><div class="empty"><div class="bi">⬆</div>请先上传 Excel 文件</div></div>
+  <div class="tp" id="tp-pivot"><div class="empty"><div class="bi">⬆</div>请先上传文件，再配置透视字段</div></div>
+  <div class="tp" id="tp-report">
+    <div class="empty"><div class="bi">📝</div>请先上传数据文件，再生成周报板块</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  Constants
+// ════════════════════════════════════════════════════════════
+const SPLIT_H=['编号','剪辑日期','产品','活动','剪辑方式','内容方向','素材命名','内容类型','内容细化','开头画面','医美元素','模特名称'];
+const ANOMALY_COLS=['产品','内容方向','内容类型','内容细化','开头画面','医美元素','活动','编号'];
+const TABLE_MAX=500;
+
+const CALC_FIELD_DEFS=[
+  {name:'3秒播放数', rateCol:['3秒播放率','3秒播放率(视频)','3秒播放率（视频）'], playsCol:['视频播放数','播放数','视频播放量']},
+  {name:'视频完播数', rateCol:['视频完播率','完播率'],                             playsCol:['视频播放数','播放数','视频播放量']},
+];
+
+const DERIVED_METRICS={
+  '整体点击率':  {num:'整体点击次数',   den:'整体展现次数',   isPct:true},
+  '整体转化率':  {num:'整体成交订单数', den:'整体点击次数',   isPct:true},
+  '整体支付ROI': {num:'整体成交金额',   den:'整体消耗',      isPct:false},
+  '3秒播放率':   {num:'3秒播放数',      den:'视频播放数',     isPct:true},
+  '视频完播率':  {num:'视频完播数',     den:'视频播放数',     isPct:true},
+};
+
+// ════════════════════════════════════════════════════════════
+//  App State
+// ════════════════════════════════════════════════════════════
+let DATA=[],HEADERS=[],NUM_HEADERS=[];
+let CALC_COLS=new Set(),PCT_COLS=new Set();
+let pcfg={rows:[],cols:[],vals:[],agg:'sum'};
+let expandedKeys=new Set(),_lastCfgHash='';
+let _dField=null,_dFromArea=null,_dFromIdx=-1,_dToIdx=-1;
+let _viewRows=[],anomalyCol=null,anomalyVals=new Set();
+let colFilters={},fpCurrentCol=null,fpAllValues=[],fpCheckedValues=new Set(),fpColorMode='all',_fpVals=[];
+let pivotSortField=null,pivotSortDir='desc';
+let pivotFilterField=null,pivotFilterOp='gt',pivotFilterVal=0,pivotFilterValMax=100,pivotFilterActive=false;
+let pivotRowFilters={};
+let valFmts={};
+let fpMode='data';
+
+// ★ 拖拽重排相关变量
+let _draggedRowIndex = -1; 
+let _dispTree = []; // 全局挂载当前的显示数
+
+// ★ 历史修改持久化管理相关变量
+let currentFileKey='';  // 用于标识同一个文件 (文件名 + 文件大小)
+let currentFileName='';
+
+// 用户自定义区间数组
+let customThresholds=[5000, 10000, 20000, 30000, 40000, 50000];
+
+// ════════════════════════════════════════════════════════════
+//  File Upload
+// ════════════════════════════════════════════════════════════
+const zone=document.getElementById('zone'),fi=document.getElementById('fi');
+
+document.addEventListener('dragover',e=>{if(!e.target.closest('.parea'))e.preventDefault();});
+document.addEventListener('drop',e=>{if(!e.target.closest('.parea')&&!e.target.closest('#zone'))e.preventDefault();});
+
+zone.addEventListener('click',()=>fi.click());
+zone.addEventListener('enter',e=>{e.preventDefault();zone.classList.add('over');});
+zone.addEventListener('dragleave',e=>{if(!zone.contains(e.relatedTarget))zone.classList.remove('over');});
+zone.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});
+zone.addEventListener('drop',e=>{
+  e.preventDefault();e.stopPropagation();
+  zone.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f)processFile(f);
+});
+fi.addEventListener('change',e=>{const f=e.target.files[0];if(f)processFile(f);fi.value='';});
+
+document.addEventListener('click',e=>{
+  const fp=document.getElementById('fp');
+  if(fp&&fp.style.display!=='none'&&!fp.contains(e.target)
+     &&!e.target.classList.contains('fi-btn')
+     &&!e.target.classList.contains('rv')
+     &&!e.target.classList.contains('pth-fbtn'))closeFP();
+});
+
+// ════════════════════════════════════════════════════════════
+//  processFile 
+// ════════════════════════════════════════════════════════════
+function processFile(file){
+  if(!/\.(xlsx|xls)$/i.test(file.name)){setSt('❌ 请上传 .xlsx 或 .xls 格式','err');return;}
+  setSt('正在读取文件…','load');
+  hideCalcWarn();
+
+  // ★ 记录当前文件 Key (用于识别同名、同大小的同一份文件)
+  currentFileKey = file.name + '_' + file.size;
+  currentFileName = file.name;
+
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+
+      let targetSheetName=null;
+      for(const sn of wb.SheetNames){
+        const ws=wb.Sheets[sn];
+        if(!ws['!ref'])continue;
+        const firstRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false,
+          range:{s:{r:0,c:0},e:{r:0,c:500}}});
+        const firstRow=(firstRows[0]||[]).map(v=>String(v).trim());
+        if(firstRow.includes('素材名称')){targetSheetName=sn;break;}
+      }
+      if(!targetSheetName)throw new Error('在所有工作表中均未找到「素材名称」列');
+
+      setSt(`正在解析工作表「${targetSheetName}」…`,'load');
+      const ws=wb.Sheets[targetSheetName];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+      if(raw.length<2)throw new Error(`工作表「${targetSheetName}」无有效数据`);
+
+      const origH=raw[0].map(v=>String(v).trim());
+      const maxCols=origH.length;
+      const rows=raw.slice(1).map(r=>{const p=r.slice();while(p.length<maxCols)p.push('');return p;});
+      const snIdx=origH.findIndex(h=>h==='素材名称');
+      if(snIdx<0)throw new Error('工作表中未找到「素材名称」列');
+
+      setSt('正在分列、计算衍生字段…','load');
+      const restH=origH.filter((_,i)=>i!==snIdx);
+      HEADERS=[...SPLIT_H,'原始素材名称',...restH];
+      CALC_COLS.clear();valFmts={};pivotRowFilters={};
+
+      DATA=rows.filter(r=>r.some(v=>v!==''&&v!=null)).map(r=>{
+        const rawName=String(r[snIdx]||'').trim();
+        const parts=rawName.split('-');
+        const obj={};
+        SPLIT_H.forEach((h,i)=>{obj[h]=parts[i]??'';});
+        obj['原始素材名称']=rawName;
+        restH.forEach(h=>{const idx=origH.indexOf(h);obj[h]=(idx>=0&&r[idx]!=null)?r[idx]:'';});
+        return obj;
+      });
+
+      NUM_HEADERS=restH.filter(h=>{
+        const valuesToTest=DATA.map(r=>r[h]).filter(v=>v!==''&&v!=null);
+        if(valuesToTest.length<3)return false;
+        return valuesToTest.filter(v=>{const n=parseFloat(String(v).replace(/[%,]/g,''));return !isNaN(n)&&isFinite(n);}).length/valuesToTest.length>0.5;
+      });
+
+      // 自动校正
+      const expectedGmvCol = findColFuzzy(HEADERS, ['整体成交金额', '用户实际支付金额', '成交金额']);
+      const expectedCostCol = findColFuzzy(HEADERS, ['整体消耗', '消耗']);
+      if (expectedGmvCol && !NUM_HEADERS.includes(expectedGmvCol)) NUM_HEADERS.push(expectedGmvCol);
+      if (expectedCostCol && !NUM_HEADERS.includes(expectedCostCol)) NUM_HEADERS.push(expectedCostCol);
+
+      detectPctCols();
+      const calcWarnings=addCalculatedFields();
+
+      // ★ 自动应用历史已勾选的修改记录
+      autoApplyHistoryChanges();
+
+      // ★ 自动设置初始数字格式默认值（百分比默认1位，其它默认0位）
+      HEADERS.forEach(h => {
+        const isPct = isDerivedPct(h) || isPctColRaw(h);
+        valFmts[h] = {
+          decimals: isPct ? 1 : 0,
+          thousands: !isPct,
+          unit: 'none'
+        };
+      });
+      valFmts['素材条数'] = { decimals: 0, thousands: true, unit: 'none' };
+      valFmts['(计数)'] = { decimals: 0, thousands: true, unit: 'none' };
+
+      const calcSuccessNames=[...CALC_COLS].join('、');
+      if(calcWarnings.length>0){
+        if(CALC_COLS.size>0)setSt(`⚠ 完成！${DATA.length} 行 · ${HEADERS.length} 列。已生成：${calcSuccessNames}；${calcWarnings.length} 个字段因源列缺失跳过（见下方提示）`,'warn');
+        else setSt(`⚠ 完成！${DATA.length} 行 · ${HEADERS.length} 列。计算字段均未生成，源列缺失（见下方提示）`,'warn');
+        showCalcWarn(calcWarnings,origH);
+      }else{
+        setSt(`✅ 完成！共 ${DATA.length} 行 · ${HEADERS.length} 列（含 ${CALC_COLS.size} 个计算字段：${calcSuccessNames}）`,'ok');
+      }
+
+      updateCards();renderTable();buildPivotUI();buildReportUI();
+      document.getElementById('cards').style.display='grid';
+      document.getElementById('tabs').style.display='flex';
+    }catch(err){setSt('❌ '+err.message,'err');}
+  };
+  reader.onerror=()=>setSt('❌ 文件读取失败','err');
+  reader.readAsArrayBuffer(file);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 持久化历史修改数据管理方法 (Local Storage Engine)
+// ════════════════════════════════════════════════════════════
+function getHistoryForFile(fileKey){
+  try {
+    let all = JSON.parse(localStorage.getItem('loreal_pivot_histories') || '{}');
+    return all[fileKey] || [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function saveHistoryForFile(fileKey, history){
+  try {
+    let all = JSON.parse(localStorage.getItem('loreal_pivot_histories') || '{}');
+    all[fileKey] = history;
+    localStorage.setItem('loreal_pivot_histories', JSON.stringify(all));
+  } catch(e) {}
+}
+
+function autoApplyHistoryChanges(){
+  if(!currentFileKey) return;
+  const history = getHistoryForFile(currentFileKey);
+  const enabledEdits = history.filter(item => item.enabled);
+  if(!enabledEdits.length) return;
+
+  let count = 0;
+  DATA.forEach(row => {
+    const rowId = row['原始素材名称'];
+    if(!rowId) return;
+    const cellEdits = enabledEdits.filter(edit => edit.rowId === rowId);
+    cellEdits.forEach(edit => {
+      if(HEADERS.includes(edit.col)){
+        row[edit.col] = edit.newVal;
+        count++;
+      }
+    });
+  });
+  console.info(`[自动套用历史] 已成功恢复并套用 ${count} 个单元格修改动作。`);
+}
+
+function recordCellEdit(rowId, col, oldVal, newVal){
+  if(!currentFileKey || !rowId) return;
+  let history = getHistoryForFile(currentFileKey);
+  
+  // 查找是否已经对该行该列有编辑记录，有则更新，无则新增
+  let exist = history.find(item => item.rowId === rowId && item.col === col);
+  if(exist){
+    exist.newVal = newVal;
+    exist.timestamp = new Date().toLocaleString();
+  } else {
+    history.push({
+      rowId: rowId,
+      col: col,
+      oldVal: oldVal,
+      newVal: newVal,
+      enabled: true,
+      timestamp: new Date().toLocaleString()
+    });
+  }
+  saveHistoryForFile(currentFileKey, history);
+  renderHistoryUI();
+}
+
+function renderHistoryUI(){
+  const hPanel = document.getElementById('history-panel');
+  if(!hPanel) return;
+  const history = getHistoryForFile(currentFileKey);
+  if(!history.length){
+    hPanel.style.display = 'none';
+    return;
+  }
+  hPanel.style.display = 'block';
+  document.getElementById('hist-count-badge').textContent = history.length;
+
+  const container = document.getElementById('history-list-container');
+  container.innerHTML = history.map((item, idx) => {
+    return `
+      <div class="history-item">
+        <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="toggleHistoryItem(${idx}, this.checked)">
+        <span class="history-item-meta">[${item.timestamp}]</span>
+        <span class="history-item-row" title="${escAttr(item.rowId)}">素材: ${escHtml(item.rowId)}</span>
+        <span class="history-item-col">${escHtml(item.col)}</span>
+        <span class="history-item-val" style="color:#777;text-decoration:line-through">${escHtml(item.oldVal || '(空)')}</span>
+        <span style="color:#aaa">➡</span>
+        <span class="history-item-val" style="font-weight:700;color:#27ae60">${escHtml(item.newVal || '(空)')}</span>
+      </div>`;
+  }).join('');
+}
+
+function toggleHistoryItem(idx, checked){
+  let history = getHistoryForFile(currentFileKey);
+  if(history[idx]){
+    history[idx].enabled = checked;
+    saveHistoryForFile(currentFileKey, history);
+  }
+  // 重新加载数据，重新套用
+  reloadAndReplayWorkflow();
+}
+
+function applyAllCheckedHistory(){
+  reloadAndReplayWorkflow();
+  setSt("✅ 已成功重算并套用选中的历史修改记录！", "ok");
+}
+
+function clearFileHistory(){
+  if(confirm("确定要清空当前文件的所有历史单元格修改记录吗？此操作无法撤销。")){
+    saveHistoryForFile(currentFileKey, []);
+    reloadAndReplayWorkflow();
+    setSt("🧹 历史记录已清空，数据已恢复原始状态。", "ok");
+  }
+}
+
+function reloadAndReplayWorkflow(){
+  const history = getHistoryForFile(currentFileKey);
+  DATA.forEach(row => {
+    const rowId = row['原始素材名称'];
+    if(!rowId) return;
+    const cellEdits = history.filter(edit => edit.rowId === rowId);
+    cellEdits.forEach(edit => {
+      if(HEADERS.includes(edit.col)){
+        row[edit.col] = edit.oldVal; // 先恢复原状
+      }
+    });
+  });
+  
+  // 再重新套用勾选中的 newVal
+  autoApplyHistoryChanges();
+  
+  // 重新渲染各个板块
+  renderTable();
+  if(_lastCfgHash) genPivot();
+  generateAutoReport();
+}
+
+// ════════════════════════════════════════════════════════════
+//  Warning Banners
+// ════════════════════════════════════════════════════════════
+function showCalcWarn(warnings,allOrigHeaders){
+  const bar=document.getElementById('calc-warn-bar');
+  document.getElementById('calc-warn-list').innerHTML=warnings.map(w=>`<li>${w}</li>`).join('');
+  document.getElementById('calc-debug-pre').textContent=
+    `Excel 中识别到的全部列名（共 ${allOrigHeaders.length} 列）：\n`+
+    allOrigHeaders.map((h,i)=>`  [${i}] "${h}"`).join('\n');
+  bar.classList.add('show');
+}
+function hideCalcWarn(){document.getElementById('calc-warn-bar').classList.remove('show');}
+
+// ════════════════════════════════════════════════════════════
+//  Fuzzy Column Matching
+// ════════════════════════════════════════════════════════════
+function normStr(s){
+  return String(s).trim()
+    .replace(/[\uff01-\uff5e]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/\u3000/g,' ').replace(/\s+/g,'').toLowerCase();
+}
+function findColFuzzy(headers,candidates){
+  const normH=headers.map(h=>({raw:h,norm:normStr(h)}));
+  for(const cand of candidates){
+    const nc=normStr(cand);
+    const hit=normH.find(h=>h.norm===nc);
+    if(hit)return hit.raw;
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════
+//  Calculated Fields
+// ════════════════════════════════════════════════════════════
+function detectPctCols(){
+  PCT_COLS.clear();
+  NUM_HEADERS.forEach(h=>{
+    const sample=DATA.slice(0,30).map(r=>String(r[h]||'').trim());
+    if(sample.some(v=>v.endsWith('%')))PCT_COLS.add(h);
+  });
+}
+function getRateFormat(col){
+  const sample=DATA.slice(0,50).map(r=>String(r[col]||'').trim()).filter(v=>v);
+  if(!sample.length)return 'decimal';
+  if(sample.some(v=>v.endsWith('%')))return 'pct_str';
+  const nums=sample.map(v=>parseFloat(v.replace(/,/g,''))).filter(v=>!isNaN(v));
+  if(!nums.length)return 'decimal';
+  return nums.reduce((a,b)=>a+b,0)/nums.length>1.5?'pct_num':'decimal';
+}
+function rateToDecimal(val,fmt){
+  const s=String(val||'').trim();if(!s)return null;
+  const n=parseFloat(s.replace(/[%,]/g,''));if(isNaN(n))return null;
+  return(fmt==='pct_str'||fmt==='pct_num')?n/100:n;
+}
+function addCalculatedFields(){
+  const warnings=[];
+  CALC_FIELD_DEFS.forEach(({name,rateCol,playsCol})=>{
+    if(HEADERS.includes(name))return;
+    const rateCands=Array.isArray(rateCol)?rateCol:[rateCol];
+    const playsCands=Array.isArray(playsCol)?playsCol:[playsCol];
+    const actualRate=findColFuzzy(HEADERS,rateCands);
+    const actualPlays=findColFuzzy(HEADERS,playsCands);
+    if(!actualRate)warnings.push(`<b>「${name}」</b> 跳过：未找到播放率列，尝试过 ${rateCands.map(c=>`<code>${c}</code>`).join(' / ')}`);
+    if(!actualPlays)warnings.push(`<b>「${name}」</b> 跳过：未找到播放数列，尝试过 ${playsCands.map(c=>`<code>${c}</code>`).join(' / ')}`);
+    if(!actualRate||!actualPlays)return;
+    const fmt=getRateFormat(actualRate);
+    let ok=0,skip=0;
+    DATA.forEach(row=>{
+      const dec=rateToDecimal(row[actualRate],fmt);
+      const plays=parseFloat(String(row[actualPlays]||'').replace(/,/g,''));
+      if(dec!==null&&!isNaN(plays)&&isFinite(plays)){row[name]=String(Math.round(dec*plays));ok++;}
+      else{row[name]='';skip++;}
+    });
+    HEADERS.push(name);CALC_COLS.add(name);
+    if(!NUM_HEADERS.includes(name))NUM_HEADERS.push(name);
+    console.info(`[计算字段] 「${name}」| 率列="${actualRate}"(${fmt}) | 播数列="${actualPlays}" | 成功=${ok} 跳过=${skip}`);
+  });
+  return warnings;
+}
+
+// ════════════════════════════════════════════════════════════
+//  Status / Cards / Tab
+// ════════════════════════════════════════════════════════════
+function setSt(msg,type){
+  const el=document.getElementById('st');
+  el.className='status show '+(type==='ok'?'ok':type==='err'?'err':type==='warn'?'warn':'');
+  document.getElementById('stxt').textContent=msg;
+}
+function updateCards(){
+  document.getElementById('cRows').textContent=DATA.length.toLocaleString();
+  document.getElementById('cCols').textContent=HEADERS.length;
+  document.getElementById('cMat').textContent=new Set(DATA.map(r=>r['编号']).filter(Boolean)).size;
+  const sk=NUM_HEADERS.find(h=>/^spd/i.test(h)||h==='整体消耗')||'SPD';
+  const spd=DATA.reduce((s,r)=>{const v=parseFloat(String(r[sk]||'').replace(/,/g,''));return s+(isNaN(v)?0:v);},0);
+  document.getElementById('cSpd').textContent=spd>=1e6?(spd/1e6).toFixed(2)+'M':spd>=1e4?(spd/1e4).toFixed(1)+'W':spd.toFixed(0);
+}
+function sw(id,btn){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tp').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');document.getElementById('tp-'+id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════
+//  Helpers
+// ════════════════════════════════════════════════════════════
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function getDateStr(){const d=new Date();return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;}
+
+// ════════════════════════════════════════════════════════════
+//  Data Table
+// ════════════════════════════════════════════════════════════
+function renderTable(){
+  colFilters={};anomalyCol=null;anomalyVals=new Set();_viewRows=DATA.slice(0,TABLE_MAX);
+  
+  // ★ 历史记录操作板 HTML 声明
+  const histPanelHtml = `
+    <div class="history-panel" id="history-panel">
+      <div class="history-panel-hd">
+        <span style="font-size:13px; font-weight:700; color:#1a1a2e; display:flex; align-items:center; gap:6px;">⏳ 该文件单元格修改历史记录 <span id="hist-count-badge" style="font-size:10px; background:#e32119; color:#fff; padding:1px 6px; border-radius:10px;">0</span></span>
+        <div>
+          <button class="btn-detect" style="padding:3px 10px; font-size:11px;" onclick="applyAllCheckedHistory()">一键重算套用</button>
+          <button class="btn-clear-a" style="padding:3px 10px; font-size:11px; margin-left:6px;" onclick="clearFileHistory()">清空历史</button>
+        </div>
+      </div>
+      <div id="history-list-container" class="history-list"></div>
+    </div>
+  `;
+
+  const calcLegend=CALC_COLS.size>0
+    ?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#1a7a3a;background:#f0fff4;border:1px solid #b7ebc8;border-radius:5px;padding:2px 8px;margin-left:8px;">🟢 绿色列 = 计算字段（${[...CALC_COLS].join('、')}）</span>`:'';
+  const aBar=`
+    <div class="anomaly-bar">
+      <span class="bar-label">🔍 异常识别</span>
+      <select class="anomaly-sel" id="anom-sel">
+        <option value="">选择识别列…</option>
+        ${ANOMALY_COLS.map(c=>`<option value="${escAttr(c)}">${c}</option>`).join('')}
+      </select>
+      <button class="btn-detect" onclick="runAnomaly()">识别异常</button>
+      <button class="btn-clear-a" onclick="clearAnomaly()">清除高亮</button>
+      <span class="anom-info" id="anom-info"></span>
+      ${calcLegend}
+    </div>`;
+  const toolbar=`
+    <div class="data-toolbar">
+      <span id="filter-stats" class="filter-stats">共 ${DATA.length} 行<span class="edit-tip">· 单击单元格直接修改（支持自动录制历史操作步骤）</span></span>
+      <div class="toolbar-right">
+        <button class="btn-clear-f" id="btn-clear-f" onclick="clearAllFilters()">🗑 清空筛选</button>
+        <button class="btn-export" onclick="exportDataToExcel()">⬇ 导出 Excel</button>
+      </div>
+    </div>`;
+  let t=`<div class="twrap"><table><thead><tr class="hdr-row">`;
+  HEADERS.forEach((h,i)=>{
+    const cls=CALC_COLS.has(h)?'calc-col':(i<SPLIT_H.length?'sc':'');
+    t+=`<th class="${cls}"><div class="th-inner">
+      <span class="th-text">${escHtml(h)}${CALC_COLS.has(h)?'<sup style="font-size:9px;opacity:.8"> fx</sup>':''}</span>
+      <span class="fi-btn" data-col="${escAttr(h)}" onclick="openFP(event,'${escAttr(h)}','data')">▼</span>
+    </div></th>`;
+  });
+  t+=`</tr></thead><tbody>`;
+  _viewRows.forEach((row,ridx)=>{
+    t+=`<tr>`;
+    HEADERS.forEach((h,i)=>{
+      const cls=CALC_COLS.has(h)?'calc-col':(i<SPLIT_H.length?'sc':'');
+      t+=`<td class="${cls}" contenteditable="true"
+        onblur="saveCell(${ridx},'${escAttr(h)}',this)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+        >${escHtml(String(row[h]??''))}</td>`;
+    });
+    t+=`</tr>`;
+  });
+  t+=`</tbody></table></div>`;
+  if(DATA.length>TABLE_MAX)t+=`<p class="tip-more">⚠ 仅显示前 ${TABLE_MAX} 行（全量 ${DATA.length} 行）</p>`;
+  document.getElementById('tp-data').innerHTML=histPanelHtml+aBar+toolbar+t;
+
+  // ★ 渲染历史记录列表数据
+  renderHistoryUI();
+}
+
+function saveCell(ridx,header,el){
+  const row=_viewRows[ridx];if(!row)return;
+  const oldVal = row[header] ?? '';
+  const newVal = el.innerText.trim();
+  
+  if (oldVal === newVal) return;
+
+  // ★ 录制编辑动作并进行持久化存储
+  recordCellEdit(row['原始素材名称'], header, oldVal, newVal);
+
+  // 更新运行态底层值
+  row[header]=newVal;
+  if(anomalyCol===header)el.classList.toggle('anom',anomalyVals.has(row[header]));
+
+  // 同步联动，自动触发透视表、周报重新计算
+  if(_lastCfgHash) genPivot();
+  generateAutoReport();
+}
+
+// ════════════════════════════════════════════════════════════
+//  Export Processed Data
+// ════════════════════════════════════════════════════════════
+function exportDataToExcel(){
+  if(!DATA.length){alert('请先上传数据！');return;}
+  const wsRows=DATA.map(row=>HEADERS.map(h=>{
+    const v=row[h]??'';if(v===''||v==null)return'';
+    const s=String(v).trim();
+    const n=parseFloat(s.replace(/[%,]/g,''));
+    if(!isNaN(n)&&isFinite(n)&&!/[a-zA-Z\u4e00-\u9fff]/.test(s.replace(/[.%,\-]/g,'')))return n;
+    return s;
+  }));
+  const ws=XLSX.utils.aoa_to_sheet([HEADERS,...wsRows]);
+  ws['!cols']=HEADERS.map((h,i)=>{
+    const maxLen=Math.max(h.length,...wsRows.slice(0,50).map(r=>String(r[i]??'').length));
+    return{wch:Math.min(Math.max(maxLen+2,8),30)};
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'处理后数据');
+  XLSX.writeFile(wb,`素材数据_${getDateStr()}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════════
+//  Filter Panel
+// ════════════════════════════════════════════════════════════
+function openFP(e,col,mode='data'){
+  e.stopPropagation();
+  fpMode=mode;fpCurrentCol=col;
+  const fp=document.getElementById('fp');
+
+  if(mode==='pivot-row'){
+    fpAllValues=[...new Set(DATA.map(r=>String(r[col]??'(空)')))].sort((a,b)=>a.localeCompare(b,'zh'));
+    const cur=pivotRowFilters[col];
+    fpCheckedValues=cur?new Set(cur):new Set(fpAllValues);
+    fpColorMode='all';
+    document.getElementById('fp-title').textContent=`行筛选：${col}`;
+    document.getElementById('fp-search').value='';
+    document.getElementById('fp-color-wrap').style.display='none';
+  }else{
+    const cur=colFilters[col];
+    fpAllValues=[...new Set(_viewRows.map(r=>String(r[col]??'')))].sort((a,b)=>a.localeCompare(b,'zh'));
+    fpCheckedValues=cur?.values?new Set(cur.values):new Set(fpAllValues);
+    fpColorMode=cur?.colorMode||'all';
+    document.getElementById('fp-title').textContent=`筛选：${col}`;
+    document.getElementById('fp-search').value='';
+    const cWrap=document.getElementById('fp-color-wrap');
+    if(anomalyCol===col&&anomalyVals.size>0){
+      cWrap.style.display='';
+      document.getElementById('fp-color-body').innerHTML=`
+        <label class="fp-color-opt"><input type="radio" name="fpcr" value="all" ${fpColorMode==='all'?'checked':''} onchange="fpColorMode=this.value"> 所有颜色</label>
+        <label class="fp-color-opt"><input type="radio" name="fpcr" value="highlighted" ${fpColorMode==='highlighted'?'checked':''} onchange="fpColorMode=this.value"> <span class="cdot hl"></span> 异常高亮</label>
+        <label class="fp-color-opt"><input type="radio" name="fpcr" value="normal" ${fpColorMode==='normal'?'checked':''} onchange="fpColorMode=this.value"> <span class="cdot nm"></span> 正常</label>`;
+    }else{cWrap.style.display='none';fpColorMode='all';}
+  }
+
+  renderFPList();
+  fp.style.display='';
+  const r=e.target.getBoundingClientRect(),pw=248,ph=420;
+  let left=r.left,top=r.bottom+4;
+  if(left+pw>window.innerWidth-8)left=window.innerWidth-pw-8;
+  if(top+ph>window.innerHeight-8)top=r.top-ph-4;
+  if(left<8)left=8;
+  fp.style.left=left+'px';fp.style.top=top+'px';
+}
+function closeFP(){document.getElementById('fp').style.display='none';}
+function fpSearch(){renderFPList();}
+function renderFPList(){
+  const search=(document.getElementById('fp-search')?.value||'').toLowerCase();
+  const list=document.getElementById('fp-list');if(!list)return;
+  _fpVals=fpAllValues.filter(v=>!search||v.toLowerCase().includes(search));
+  const ac=fpAllValues.length>0&&fpAllValues.every(v=>fpCheckedValues.has(v));
+  const sc=fpAllValues.some(v=>fpCheckedValues.has(v));
+  const allCb=document.getElementById('fp-all-cb');
+  if(allCb){allCb.checked=ac;allCb.indeterminate=!ac&&sc;}
+  if(!_fpVals.length){list.innerHTML=`<div class="fp-empty">无匹配值</div>`;return;}
+  list.innerHTML=_fpVals.map((v,idx)=>`
+    <label class="fp-item">
+      <input type="checkbox" ${fpCheckedValues.has(v)?'checked':''} onchange="fpCbChange(this,${idx})">
+      <span class="fp-val ${fpMode==='data'&&anomalyCol===fpCurrentCol&&anomalyVals.has(v)?'anom-val':''}">${escHtml(v)||'（空值）'}</span>
+    </label>`).join('');
+}
+function fpCbChange(cb,idx){
+  const v=_fpVals[idx];if(cb.checked)fpCheckedValues.add(v);else fpCheckedValues.delete(v);
+  const allCb=document.getElementById('fp-all-cb');
+  if(allCb){const ac=fpAllValues.every(x=>fpCheckedValues.has(x)),sc=fpAllValues.some(x=>fpCheckedValues.has(x));allCb.checked=ac;allCb.indeterminate=!ac&&sc;}
+}
+function fpToggleAll(cb){if(cb.checked)fpAllValues.forEach(v=>fpCheckedValues.add(v));else fpCheckedValues.clear();renderFPList();}
+
+function applyFP(){
+  if(fpMode==='pivot-row'){
+    const allSel=fpAllValues.every(v=>fpCheckedValues.has(v));
+    if(allSel)delete pivotRowFilters[fpCurrentCol];
+    else pivotRowFilters[fpCurrentCol]=new Set(fpCheckedValues);
+    closeFP();rTags('rows');
+    if(_lastCfgHash)genPivot();
+    return;
+  }
+  const allSel=fpAllValues.every(v=>fpCheckedValues.has(v));
+  if(allSel&&fpColorMode==='all')delete colFilters[fpCurrentCol];
+  else colFilters[fpCurrentCol]={values:allSel?null:new Set(fpCheckedValues),colorMode:fpColorMode};
+  closeFP();applyAllColFilters();
+}
+function clearFPCol(){
+  if(fpMode==='pivot-row'){
+    delete pivotRowFilters[fpCurrentCol];
+    closeFP();rTags('rows');
+    if(_lastCfgHash)genPivot();
+    return;
+  }
+  delete colFilters[fpCurrentCol];closeFP();applyAllColFilters();
+}
+function clearAllFilters(){colFilters={};applyAllColFilters();}
+function applyAllColFilters(){
+  const tbody=document.querySelector('#tp-data tbody');if(!tbody)return;
+  const hasAny=Object.keys(colFilters).length>0;
+  let visible=0;
+  tbody.querySelectorAll('tr').forEach((tr,i)=>{
+    const row=_viewRows[i];let show=!!row;
+    if(row){show=Object.entries(colFilters).every(([col,f])=>{
+      if(!f)return true;
+      const val=String(row[col]??''),trimmed=val.trim();
+      if(f.colorMode&&f.colorMode!=='all'&&col===anomalyCol&&anomalyVals.size>0){
+        const ia=anomalyVals.has(trimmed);
+        if(f.colorMode==='highlighted'&&!ia)return false;
+        if(f.colorMode==='normal'&&ia)return false;
+      }
+      if(f.values&&!f.values.has(val))return false;
+      return true;
+    });}
+    tr.style.display=show?'':'none';if(show)visible++;
+  });
+  const stats=document.getElementById('filter-stats');
+  if(stats)stats.innerHTML=hasAny
+    ?`筛选结果：<b>${visible}</b> 行（已加载 ${_viewRows.length} / 全量 ${DATA.length} 行）<span class="edit-tip">· 单击单元格直接修改</span>`
+    :`共 ${DATA.length} 行<span class="edit-tip">· 单击单元格直接修改</span>`;
+  const cb=document.getElementById('btn-clear-f');if(cb)cb.classList.toggle('show',hasAny);
+  document.querySelectorAll('.fi-btn').forEach(btn=>{
+    const col=btn.dataset.col,f=colFilters[col];
+    btn.classList.toggle('active',!!(f&&(f.values||(f.colorMode&&f.colorMode!=='all'))));
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  Anomaly Detection
+// ════════════════════════════════════════════════════════════
+function runAnomaly(){
+  const sel=document.getElementById('anom-sel');if(!sel?.value){alert('请先选择要识别的列！');return;}
+  const col=sel.value;
+  const freq={};DATA.forEach(r=>{const v=String(r[col]??'').trim();if(v)freq[v]=(freq[v]||0)+1;});
+  const entries=Object.entries(freq);
+  if(!entries.length){setAnomInfo(`「${col}」列无有效数据`,false);return;}
+  if(entries.length===1){anomalyCol=null;anomalyVals=new Set();setAnomInfo(`✅「${col}」列值唯一，无异常`,true);applyAnomalyHL();return;}
+  const total=DATA.length,sorted=entries.sort(([,a],[,b])=>b-a);
+  let cum=0;const core=new Set();
+  for(const[v,cnt]of sorted){core.add(v);cum+=cnt;if(cum/total>=0.80)break;}
+  const anomE=sorted.filter(([v])=>!core.has(v));
+  anomalyCol=col;anomalyVals=new Set(anomE.map(([v])=>v));
+  if(!anomalyVals.size){setAnomInfo(`✅「${col}」列未发现异常值`,true);}
+  else{const cnt=anomE.reduce((s,[,c])=>s+c,0);setAnomInfo(`⚠「${col}」发现 ${anomalyVals.size} 种异常值，涉及 ${cnt} 行`,false);}
+  applyAnomalyHL();
+}
+function clearAnomaly(){
+  anomalyCol=null;anomalyVals=new Set();
+  const sel=document.getElementById('anom-sel');if(sel)sel.value='';
+  setAnomInfo('',false);applyAnomalyHL();
+}
+function setAnomInfo(msg,isOk){
+  const el=document.getElementById('anom-info');if(!el)return;
+  el.className=msg?('anom-info '+(isOk?'ok':'show')):'anom-info';el.textContent=msg;
+}
+function applyAnomalyHL(){
+  const tbody=document.querySelector('#tp-data tbody');if(!tbody)return;
+  tbody.querySelectorAll('.anom').forEach(td=>td.classList.remove('anom'));
+  if(!anomalyCol)return;
+  const ci=HEADERS.indexOf(anomalyCol);if(ci<0)return;
+  tbody.querySelectorAll('tr').forEach((tr,i)=>{
+    const row=_viewRows[i];if(!row)return;
+    const val=String(row[anomalyCol]??'').trim();
+    if(anomalyVals.has(val)){const cells=tr.querySelectorAll('td');if(cells[ci])cells[ci].classList.add('anom');}
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 各值字段独立数字格式（百分比默认1位，其余0位）
+// ════════════════════════════════════════════════════════════
+function getValFmt(field){
+  if(!valFmts[field]){
+    const isPct = isDerivedPct(field) || isPctColRaw(field);
+    valFmts[field]={
+      decimals: isPct ? 1 : 0, 
+      thousands: !isPct,
+      unit:'none'
+    };
+  }
+  return valFmts[field];
+}
+
+function setValFmt(field,key,val){
+  getValFmt(field)[key]=val;
+  renderFmtPanel();
+  if(_lastCfgHash)genPivot();
+}
+function isDerivedPct(h){return !!(DERIVED_METRICS[h]?.isPct);}
+function isPctColRaw(h){return PCT_COLS.has(h)&&!DERIVED_METRICS[h];}
+
+function fmtCell(v,vf){
+  if(v===null||v===undefined)return'-';
+  const n=parseFloat(v);if(isNaN(n))return String(v);
+  const fmt=vf?getValFmt(vf):{decimals:0,thousands:true,unit:'none'};
+  if(vf&&isDerivedPct(vf)){return(n*100).toFixed(fmt.decimals)+'%';}
+  if(vf&&isPctColRaw(vf)){return n.toFixed(fmt.decimals)+'%';}
+  let num,suffix;
+  switch(fmt.unit){
+    case'亿':num=n/1e8;suffix='亿';break;
+    case'M':num=n/1e6;suffix='M';break;
+    case'W':num=n/1e4;suffix='W';break;
+    default:num=n;suffix='';
+  }
+  let str=num.toFixed(fmt.decimals);
+  if(fmt.thousands){const p=str.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');str=p.join('.');}
+  return str+suffix;
+}
+
+function toggleFmtPanel(){
+  const p=document.getElementById('fmt-panel'),btn=document.getElementById('fmt-btn');
+  const show=p.classList.toggle('show');
+  btn.classList.toggle('on',show);
+  if(show)renderFmtPanel();
+}
+function renderFmtPanelIfOpen(){
+  const p=document.getElementById('fmt-panel');
+  if(p&&p.classList.contains('show'))renderFmtPanel();
+}
+
+function renderFmtPanel(){
+  const panel=document.getElementById('fmt-panel');if(!panel)return;
+  const showVals=pcfg.vals;
+  if(!showVals.length){
+    panel.innerHTML=`<div class="fmt-panel-hd">🔢 各值字段数字格式</div><div class="fmt-empty-hint">请先将数值字段拖入「值」区域</div>`;
+    return;
+  }
+  let html=`<div class="fmt-panel-hd">🔢 各值字段数字格式设置</div>
+  <table class="fmt-table">
+    <thead><tr>
+      <th>字段</th>
+      <th>小数位</th>
+      <th>千分位</th>
+      <th>单位</th>
+      <th style="text-align:left">预览</th>
+    </tr></thead>
+    <tbody>`;
+
+  showVals.forEach(vf=>{
+    const fmt=getValFmt(vf);
+    const isAuto=isDerivedPct(vf)||isPctColRaw(vf);
+    const isCalcF=CALC_COLS.has(vf)&&!isDerivedPct(vf);
+    const badge=isAuto
+      ?`<span class="ffl-badge ffl-auto">%</span>`
+      :isCalcF?`<span class="ffl-badge ffl-calc">★</span>`:'';
+
+    const safeVf=escAttr(vf);
+
+    const decSel=`<select class="fmt-sel" onchange="setValFmt('${safeVf}','decimals',+this.value)">
+      ${[0,1,2,3,4].map(d=>`<option value="${d}"${fmt.decimals===d?' selected':''}>${d} 位</option>`).join('')}
+    </select>`;
+
+    const thousandsCell=isAuto
+      ?`<td><span class="fmt-na">—</span></td>`
+      :`<td><label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;justify-content:center">
+          <input type="checkbox" ${fmt.thousands?'checked':''} onchange="setValFmt('${safeVf}','thousands',this.checked)">
+          <span style="font-size:11px;color:#555">启用</span>
+        </label></td>`;
+
+    const unitCell=isAuto
+      ?`<td><span class="fmt-na">—</span></td>`
+      :`<td><select class="fmt-sel" onchange="setValFmt('${safeVf}','unit',this.value)">
+          <option value="none"${fmt.unit==='none'?' selected':''}>原始</option>
+          <option value="W"${fmt.unit==='W'?' selected':''}>万</option>
+          <option value="M"${fmt.unit==='M'?' selected':''}>M</option>
+          <option value="亿"${fmt.unit==='亿'?' selected':''}>亿</option>
+        </select></td>`;
+
+    const preNums=isAuto?[0.0356,0.1234,0.005]:[9876543,12345,1234];
+    const preview=preNums.map(n=>fmtCell(n,vf)).join(' · ');
+
+    html+=`<tr>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis" title="${safeVf}">${escHtml(vf)} ${badge}</td>
+      <td>${decSel}</td>
+      ${thousandsCell}
+      ${unitCell}
+      <td class="fmt-preview-cell">${escHtml(preview)}</td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table>`;
+  panel.innerHTML=html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 基于「编号」进行深度数据行整合融合
+// ════════════════════════════════════════════════════════════
+function getMergedData(originalRows){
+  const mergedMap = {};
+  originalRows.forEach(row => {
+    const id = String(row['编号'] || '').trim();
+    if (!id) return;
+    if (!mergedMap[id]) {
+      mergedMap[id] = Object.assign({}, row);
+      mergedMap[id]['素材条数'] = 1; 
+    } else {
+      HEADERS.forEach(h => {
+        if (NUM_HEADERS.includes(h) || CALC_COLS.has(h)) {
+          const v1 = parseFloat(String(mergedMap[id][h] || '').replace(/[%,]/g, '')) || 0;
+          const v2 = parseFloat(String(row[h] || '').replace(/[%,]/g, '')) || 0;
+          mergedMap[id][h] = String(v1 + v2);
+        }
+      });
+    }
+  });
+  return Object.values(mergedMap);
+}
+
+// ════════════════════════════════════════════════════════════
+//  Pivot UI & Template Saving Engine
+// ════════════════════════════════════════════════════════════
+function buildPivotUI(){
+  pcfg={rows:[],cols:[],vals:[],agg:'sum'};expandedKeys=new Set();_lastCfgHash='';
+  pivotSortField=null;pivotFilterField=null;pivotFilterActive=false;
+  pivotRowFilters={};
+  const dims=HEADERS.filter(h=>!NUM_HEADERS.includes(h) && h!=='原始素材名称');
+  const nums=[...NUM_HEADERS, '素材条数']; 
+  const isDerived=h=>!!DERIVED_METRICS[h];
+  const isCalc=h=>CALC_COLS.has(h);
+  
+  document.getElementById('tp-pivot').innerHTML=`
+  <!-- ★ 模板管理板块 -->
+  <div class="tpl-container">
+    <span class="tpl-title">📋 我的透视模板：</span>
+    <div id="tpl-list-container" class="tpl-list"></div>
+    <button class="btn-save-tpl" onclick="saveCurrentAsTemplate()">➕ 保存当前配置为模板</button>
+  </div>
+  
+  <div class="pcfg">
+    <div class="flist">
+      <span class="flist-section-title">🔷 维度字段</span>
+      <span class="flist-hint">拖入「行」或「列」区域</span>
+      <div id="dim-fields">${dims.map(f=>`
+        <span class="fi" draggable="true" ondragstart="onFldDS(event,'${escAttr(f)}')" ondragend="onFldDE(event)">
+          <span class="grab-ico">⠿</span>${escHtml(f)}</span>`).join('')}</div>
+      <span class="flist-section-title">🔢 数值字段</span>
+      <span class="flist-hint">拖入「值」区域 &nbsp;·&nbsp; <span style="color:#8e44ad">紫=公式</span> &nbsp; <span style="color:#1a7a3a">绿=计算</span></span>
+      <div id="num-fields">
+        ${nums.map(f=>`
+        <span class="fi ${isDerived(f)?'derived':''} ${isCalc(f)&&!isDerived(f)?'calc':''} ${f==='素材条数'?'calc':''}" draggable="true" ondragstart="onFldDS(event,'${escAttr(f)}')" ondragend="onFldDE(event)">
+          <span class="grab-ico">⠿</span>${escHtml(f)}${isDerived(f)?'<sup style="font-size:9px;opacity:.7">fx</sup>':''}${f==='素材条数'?'<sup style="font-size:9px;color:#27ae60">去重</sup>':''}</span>`).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="pareas">
+        ${[
+          ['rows','📌 行字段','多字段层级 · 生成后可在表头直接筛选'],
+          ['cols','↔ 列字段','展开为横向分组'],
+          ['vals','🔢 值字段','各字段独立数字格式']
+        ].map(([a,l,h])=>`
+        <div class="parea" id="parea-${a}" ondragover="onAreaDO(event,'${a}')" ondragleave="onAreaDL(event,'${a}')" ondrop="onAreaDrop(event,'${a}')">
+          <div class="parea-title">${l}</div><span class="parea-hint">${h}</span>
+          <div class="tag-wrap" id="tag-${a}"></div></div>`).join('')}
+      </div>
+      <div class="agg-row">
+        <label style="font-size:12px;color:#666;white-space:nowrap">聚合方式：</label>
+        <select class="agsel" onchange="pcfg.agg=this.value">
+          <option value="sum">求和 SUM</option><option value="count">计数 COUNT</option>
+          <option value="avg">平均值 AVG</option><option value="max">最大值 MAX</option>
+          <option value="min">最小值 MIN</option>
+        </select>
+        <button class="fmt-btn" id="fmt-btn" onclick="toggleFmtPanel()">🔢 数字格式</button>
+      </div>
+      <div class="fmt-panel" id="fmt-panel"></div>
+      <button class="genbtn" onclick="genPivot()">🔄 生成透视表</button>
+    </div>
+  </div>
+  <div id="pivot-toolbar"></div>
+  <div id="pivOut"><div class="empty"><div class="bi">⚙</div>从左侧拖入字段后点击「生成透视表」</div></div>`;
+
+  // 渲染模板列表
+  renderTemplates();
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 透视表配置自定义模板保存、加载与应用
+// ════════════════════════════════════════════════════════════
+function saveCurrentAsTemplate() {
+  const name = prompt("请输入自定义模板名称：");
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  let templates = [];
+  try {
+    templates = JSON.parse(localStorage.getItem('loreal_pivot_templates') || '[]');
+  } catch(e) {}
+
+  templates.push({
+    name: trimmed,
+    rows: [...pcfg.rows],
+    cols: [...pcfg.cols],
+    vals: [...pcfg.vals],
+    agg: pcfg.agg
+  });
+
+  localStorage.setItem('loreal_pivot_templates', JSON.stringify(templates));
+  renderTemplates();
+}
+
+function renderTemplates() {
+  const container = document.getElementById('tpl-list-container');
+  if (!container) return;
+
+  let templates = [];
+  try {
+    templates = JSON.parse(localStorage.getItem('loreal_pivot_templates') || '[]');
+  } catch(e) {}
+
+  if (!templates.length) {
+    container.innerHTML = `<span style="font-size:11px; color:#aaa">暂无保存的模板</span>`;
+    return;
+  }
+
+  container.innerHTML = templates.map((t, idx) => {
+    return `
+      <span class="tpl-btn" onclick="applyTemplate(${idx})">
+        📋 ${escHtml(t.name)}
+        <span class="tpl-btn-del" onclick="event.stopPropagation(); deleteTemplate(${idx})">✕</span>
+      </span>
+    `;
+  }).join('');
+}
+
+function deleteTemplate(idx) {
+  if (!confirm("确定要删除该配置模板吗？")) return;
+  let templates = [];
+  try {
+    templates = JSON.parse(localStorage.getItem('loreal_pivot_templates') || '[]');
+  } catch(e) {}
+
+  templates.splice(idx, 1);
+  localStorage.setItem('loreal_pivot_templates', JSON.stringify(templates));
+  renderTemplates();
+}
+
+function applyTemplate(idx) {
+  let templates = [];
+  try {
+    templates = JSON.parse(localStorage.getItem('loreal_pivot_templates') || '[]');
+  } catch(e) {}
+
+  const t = templates[idx];
+  if (!t) return;
+
+  pcfg.rows = [...t.rows];
+  pcfg.cols = [...t.cols];
+  pcfg.vals = [...t.vals];
+  pcfg.agg = t.agg || 'sum';
+
+  const aggSel = document.querySelector('.agsel');
+  if (aggSel) aggSel.value = pcfg.agg;
+
+  rTags('rows');
+  rTags('cols');
+  rTags('vals');
+
+  genPivot();
+}
+
+// ── Pivot DnD ──────────────────────────────────────────────
+function onFldDS(e,f){_dField=f;_dFromArea=null;_dFromIdx=-1;_dToIdx=-1;e.dataTransfer.effectAllowed='copy';e.dataTransfer.setData('text/plain',JSON.stringify({field:f,fromArea:null}));setTimeout(()=>e.target.classList.add('is-dragging'),0);}
+function onFldDE(e){e.target.classList.remove('is-dragging');}
+function onChipDS(e,area,idx){_dField=pcfg[area][idx];_dFromArea=area;_dFromIdx=idx;_dToIdx=-1;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',JSON.stringify({field:_dField,fromArea:area,fromIdx:idx}));setTimeout(()=>e.target.classList.add('is-dragging'),0);e.stopPropagation();}
+function onChipDE(e){e.target.classList.remove('is-dragging');clearDropHL();}
+function onChipDO(e,area,idx){e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();const il=e.clientX<r.left+r.width/2;_dToIdx=il?idx:idx+1;clearDropHL(area);const chips=document.querySelectorAll(`#tag-${area} .sf`);if(chips[idx])chips[idx].classList.add(il?'drop-before':'drop-after');}
+function clearDropHL(area){document.querySelectorAll(area?`#tag-${area} .sf`:'.sf').forEach(el=>el.classList.remove('drop-before','drop-after'));}
+function onAreaDO(e,area){e.preventDefault();document.getElementById('parea-'+area).classList.add('drag-over');}
+function onAreaDL(e,area){const el=document.getElementById('parea-'+area);if(!el.contains(e.relatedTarget))el.classList.remove('drag-over');}
+function onAreaDrop(e,area){
+  e.preventDefault();e.stopPropagation();
+  document.getElementById('parea-'+area).classList.remove('drag-over');clearDropHL();
+  let data;try{data=JSON.parse(e.dataTransfer.getData('text/plain'));}catch{return;}
+  const{field,fromArea,fromIdx}=data;if(!field)return;
+  if(fromArea===area){
+    const si=fromIdx??_dFromIdx;
+    if(_dToIdx!==-1&&si!==-1){const arr=[...pcfg[area]];arr.splice(si,1);const ins=_dToIdx>si?_dToIdx-1:_dToIdx;arr.splice(Math.max(0,Math.min(ins,arr.length)),0,field);pcfg[area]=arr;}
+  }else{
+    if(fromArea){
+      pcfg[fromArea]=pcfg[fromArea].filter(f=>f!==field);
+      if(fromArea==='rows')delete pivotRowFilters[field];
+    }
+    pcfg[area]=pcfg[area].filter(f=>f!==field);
+    if(area!=='rows')delete pivotRowFilters[field];
+    if(_dToIdx!==-1&&_dToIdx<=pcfg[area].length)pcfg[area].splice(_dToIdx,0,field);
+    else pcfg[area].push(field);
+  }
+  _dToIdx=-1;_dFromIdx=-1;
+  rTags('rows');rTags('cols');rTags('vals');
+}
+
+function rTags(area){
+  const el=document.getElementById('tag-'+area);if(!el)return;
+  el.innerHTML=pcfg[area].map((f,i)=>{
+    const isDer=!!DERIVED_METRICS[f],isCal=CALC_COLS.has(f) || f==='素材条数';
+    const hasRowFilter=area==='rows'&&pivotRowFilters[f]&&pivotRowFilters[f].size>0;
+    const filterBtn=area==='rows'
+      ?`<span class="rv ${hasRowFilter?'rv-on':''}"
+          onclick="event.stopPropagation();openFP(event,'${escAttr(f)}','pivot-row')"
+          title="${hasRowFilter?'已筛选，点击修改':'点击预设行筛选'}">▼</span>`
+      :'';
+    return`<span class="sf ${isDer?'sf-derived':''} ${isCal&&!isDer?'sf-calc':''} ${hasRowFilter?'sf-filtered':''}"
+      draggable="true"
+      ondragstart="onChipDS(event,'${area}',${i})"
+      ondragend="onChipDE(event)"
+      ondragover="onChipDO(event,'${area}',${i})">
+      <span class="sh">⠿</span>
+      ${escHtml(f)}${isDer?'<sup style="font-size:9px;opacity:.8">fx</sup>':''}${isCal&&!isDer?'<sup style="font-size:9px;opacity:.8">去重</sup>':''}
+      ${filterBtn}
+      <span class="rx" onclick="rmF('${area}','${escAttr(f)}')">✕</span>
+    </span>`;
+  }).join('');
+  if(area==='vals')renderFmtPanelIfOpen();
+}
+function rmF(area,f){
+  pcfg[area]=pcfg[area].filter(x=>x!==f);
+  if(area==='rows')delete pivotRowFilters[f];
+  rTags(area);
+}
+
+// ════════════════════════════════════════════════════════════
+//  Aggregation
+// ════════════════════════════════════════════════════════════
+function aggArr(arr,method){
+  if(!arr.length)return null;
+  const ns=arr.map(v=>parseFloat(String(v).replace(/[%,]/g,''))).filter(v=>!isNaN(v)&&isFinite(v));
+  if(!ns.length)return method==='count'?arr.length:null;
+  switch(method){case'sum':return ns.reduce((a,b)=>a+b,0);case'count':return ns.length;case'avg':return ns.reduce((a,b)=>a+b,0)/ns.length;case'max':return Math.max(...ns);case'min':return Math.min(...ns);}
+}
+
+// ════════════════════════════════════════════════════════════
+//  行筛选后的整合合并切片
+// ════════════════════════════════════════════════════════════
+function getPivotData(){
+  const activeKeys=Object.keys(pivotRowFilters).filter(k=>pivotRowFilters[k]?.size>0);
+  const baseData = getMergedData(DATA); 
+  if(!activeKeys.length)return baseData;
+  return baseData.filter(row=>activeKeys.every(field=>pivotRowFilters[field].has(String(row[field]??'(空)'))));
+}
+
+// ════════════════════════════════════════════════════════════
+//  Pivot Generation
+// ════════════════════════════════════════════════════════════
+function genPivot(){
+  const{rows,cols,vals,agg:method}=pcfg;
+  if(!rows.length&&!cols.length){document.getElementById('pivOut').innerHTML='<div class="empty"><div class="bi">⚙</div>从左侧拖入字段后点击「生成透视表」</div>';return;}
+  const cfgHash=JSON.stringify({rows,cols,vals,agg:method});
+  if(cfgHash!==_lastCfgHash){expandedKeys=new Set();_lastCfgHash=cfgHash;}
+
+  // ★ 获取当前条件行筛选过滤后的纯净数据集
+  const FDATA = getPivotData(); 
+
+  const showVals=vals.length?vals:['(计数)'];
+  const getCKey=r=>cols.map(f=>r[f]||'(空)').join(' │ ');
+  const cKeys=cols.length?[...new Set(FDATA.map(getCKey))].sort((a,b)=>a.localeCompare(b,'zh')):[];
+  const allCols=[...cKeys,'__TOTAL__'];
+
+  // ★ 计算单元格或汇总值（联动解决公式及重复计数逻辑）
+  function calcVal(items,ck,vf){
+    const sub=ck==='__TOTAL__'?items:(cols.length?items.filter(r=>getCKey(r)===ck):items);
+    if(DERIVED_METRICS[vf]){
+      const dm=DERIVED_METRICS[vf];
+      // 支持弹性列名匹配，防止用户表格中的实际列名和标准键不一致
+      const actualNumCol = findColFuzzy(HEADERS, [dm.num, '整体点击次数', '整体成交订单数', '整体成交金额', '3秒播放数', '视频完播数']);
+      const actualDenCol = findColFuzzy(HEADERS, [dm.den, '整体展现次数', '整体点击次数', '整体消耗', '视频播放数']);
+      const numSum=aggArr(sub.map(r=>r[actualNumCol || dm.num]),'sum');
+      const denSum=aggArr(sub.map(r=>r[actualDenCol || dm.den]),'sum');
+      if(!denSum||denSum===0)return null;
+      return numSum/denSum;
+    }
+    // ★ 素材条数累加 sub 数组的素材条数值，而非整个 DATA 数组的总行数
+    if(vf==='素材条数') {
+      return aggArr(sub.map(r=>r['素材条数']||1), 'sum');
+    }
+    return aggArr(sub.map(r=>vf==='(计数)'?1:r[vf]),method);
+  }
+
+  function buildTree(data,fields){
+    if(!fields.length)return[];
+    const[f,...rest]=fields;
+    const groups={},order=[];
+    data.forEach(r=>{
+      const k=String(r[f]??'(空)');
+      if(!groups[k]){groups[k]=[];order.push(k);}
+      groups[k].push(r);
+    });
+    return[...new Set(order)].sort((a,b)=>a.localeCompare(b,'zh'))
+      .map(key=>({key,field:f,items:groups[key],children:rest.length?buildTree(groups[key],rest):[]}));
+  }
+
+  const tree=rows.length?buildTree(FDATA,rows):[{key:'__all__',field:'',items:FDATA,children:[]}];
+
+  // ★ 核心修复：如果是百分比字段（衍生或原始百分比），其底层值（如 0.03）和用户输入的直观数值（如 3% 的 3）进行对齐比对
+  function getAdjustedVal(items, ck, vf) {
+    let v = calcVal(items, ck, vf);
+    if (v === null || v === undefined) return v;
+    if (isDerivedPct(vf) || isPctColRaw(vf)) {
+      v = v * 100;
+    }
+    return v;
+  }
+
+  if(pivotSortField&&showVals.includes(pivotSortField)){
+    tree.sort((a,b)=>{
+      const av=calcVal(a.items,'__TOTAL__',pivotSortField)??-Infinity;
+      const bv=calcVal(b.items,'__TOTAL__',pivotSortField)??-Infinity;
+      return pivotSortDir==='desc'?bv-av:av-bv;
+    });
+  }
+
+  _dispTree=tree;
+  if(pivotFilterActive&&pivotFilterField&&showVals.includes(pivotFilterField)){
+    _dispTree=tree.filter(node=>{
+      const v=getAdjustedVal(node.items,'__TOTAL__',pivotFilterField);
+      if(v===null||v===undefined)return false;
+      const t=pivotFilterVal;
+      const tMax=pivotFilterValMax;
+      switch(pivotFilterOp){
+        case'gt':return v>t;
+        case'gte':return v>=t;
+        case'lt':return v<t;
+        case'lte':return v<=t;
+        case'eq':return v===t;
+        case'between':return v>=t && v<=tMax;
+        default:return true;
+      }
+    });
+  }
+
+  // ★ 计算用于总计的数据集：由于引入了值过滤，总计行应只累加过滤后可见行的数据
+  let grandTotalData = FDATA;
+  if (rows.length) {
+    let tempItems = [];
+    _dispTree.forEach(node => {
+      if (node.items) {
+        tempItems = tempItems.concat(node.items);
+      }
+    });
+    grandTotalData = tempItems;
+  }
+
+  renderPivotToolbar(showVals,cKeys);
+
+  if(!FDATA.length){
+    document.getElementById('pivOut').innerHTML='<div class="empty"><div class="bi">🔍</div>行筛选条件下无匹配数据</div>';
+    return;
+  }
+
+  const multiVals=showVals.length>1;
+  let html='<div class="pout"><table><thead>';
+
+  if(cols.length&&cKeys.length&&multiVals){
+    html+='<tr>';
+    if(rows.length){
+      rows.forEach(rf=>{
+        const hasF=pivotRowFilters[rf]?.size>0;
+        html+=`<th class="rh" rowspan="2">${escHtml(rf)}<span class="pth-fbtn${hasF?' active':''}" onclick="openFP(event,'${escAttr(rf)}','pivot-row')" title="筛选「${escAttr(rf)}」">▼</span><div class="col-resizer"></div></th>`;
+      });
+    }
+    cKeys.forEach(ck=>{html+=`<th colspan="${showVals.length}">${escHtml(ck)}<div class="col-resizer"></div></th>`;});
+    html+=`<th colspan="${showVals.length}">总计<div class="col-resizer"></div></th></tr><tr>`;
+    allCols.forEach(()=>{showVals.forEach(vf=>{html+=`<th class="sub">${escHtml(vf)}<div class="col-resizer"></div></th>`;});});
+    html+='</tr>';
+  }else{
+    html+='<tr>';
+    if(rows.length){
+      rows.forEach(rf=>{
+        const hasF=pivotRowFilters[rf]?.size>0;
+        html+=`<th class="rh">${escHtml(rf)}<span class="pth-fbtn${hasF?' active':''}" onclick="openFP(event,'${escAttr(rf)}','pivot-row')" title="筛选「${escAttr(rf)}」">▼</span><div class="col-resizer"></div></th>`;
+      });
+    }
+    if(cols.length&&cKeys.length){
+      cKeys.forEach(ck=>{showVals.forEach(vf=>{html+=`<th>${escHtml(ck)}${multiVals?' · '+escHtml(vf):''}<div class="col-resizer"></div></th>`;});});
+      showVals.forEach(vf=>{html+=`<th class="sub">总计${multiVals?' · '+escHtml(vf):''}<div class="col-resizer"></div></th>`;});
+    }else{
+      showVals.forEach(vf=>{html+=`<th>${escHtml(vf)}<div class="col-resizer"></div></th>`;});
+    }
+    html+='</tr>';
+  }
+  html+='</thead><tbody>';
+
+  function renderNode(node,level,keyPath,parentRowIdx){
+    const nodeKey=nodePath(keyPath, node.key);
+    const isExp=expandedKeys.has(nodeKey);
+    const hasKids=node.children&&node.children.length>0;
+    const pad=level*16+8;
+    const label=node.key==='__all__'?'':node.key;
+    
+    // 生成基于索引的行ID，为行排序拖放提供精确定位支持
+    const rowIdStr = parentRowIdx !== undefined ? `${parentRowIdx}-${node.key}` : nodeKey;
+
+    let s=`<tr class="lvl-${Math.min(level,2)}" draggable="true" 
+              data-row-id="${escAttr(rowIdStr)}" 
+              data-level="${level}"
+              ondragstart="onRowDragStart(event, '${escAttr(rowIdStr)}')"
+              ondragover="onRowDragOver(event, this)"
+              ondragleave="onRowDragLeave(event, this)"
+              ondrop="onRowDrop(event, '${escAttr(rowIdStr)}')"
+              ondragend="onRowDragEnd(event)">`;
+              
+    if(rows.length){
+      s+=`<td class="rl" colspan="${rows.length}" style="padding-left:${pad}px; position:relative">`;
+      if(hasKids)s+=`<span class="expand-btn" onclick="toggleExpand('${escAttr(nodeKey)}',this)" draggable="false">${isExp?'▼':'▶'}</span>`;
+      else s+=`<span class="expand-spc"></span>`;
+      s+=escHtml(label)+`<div class="row-resizer"></div></td>`;
+    }
+    allCols.forEach(ck=>{
+      showVals.forEach(vf=>{
+        const v=calcVal(node.items,ck,vf);
+        s+=`<td class="${ck==='__TOTAL__'?'tc':''}">${fmtCell(v,vf)}</td>`;
+      });
+    });
+    s+='</tr>';
+    if(hasKids&&isExp)node.children.forEach((ch, cidx)=>{s+=renderNode(ch,level+1,nodeKey,rowIdStr);});
+    return s;
+  }
+
+  function nodePath(path, key) {
+    return path ? path + '§' + key : key;
+  }
+
+  if(!rows.length){
+    html+='<tr>';
+    allCols.forEach(ck=>{
+      showVals.forEach(vf=>{
+        html+=`<td class="${ck==='__TOTAL__'?'tc':''}">${fmtCell(calcVal(grandTotalData,ck,vf),vf)}</td>`;
+      });
+    });
+    html+='</tr>';
+  }else{
+    _dispTree.forEach((node, idx)=>{html+=renderNode(node,0,'',idx);});
+    if(_dispTree.length>1||pivotFilterActive){
+      html+=`<tr class="grand-total"><td class="rl" colspan="${rows.length}" style="position:relative"><b>总计</b><div class="row-resizer"></div></td>`;
+      allCols.forEach(ck=>{showVals.forEach(vf=>{html+=`<td class="tc">${fmtCell(calcVal(grandTotalData,ck,vf),vf)}</td>`;});});
+      html+='</tr>';
+    }
+  }
+
+  html+=`</tbody></table></div>`;
+  html+=`<div class="pmeta">显示 ${_dispTree.length} 行 · 共 ${FDATA.length} 条合并素材数据${pivotFilterActive?' · 已过滤':''}</div>`;
+  document.getElementById('pivOut').innerHTML=html;
+
+  // ★ 初始化列宽和行宽拖拽调整事件
+  initPivotResizers();
+}
+
+function toggleExpand(key,btn){
+  if(expandedKeys.has(key)){expandedKeys.delete(key);}
+  else{expandedKeys.add(key);}
+  genPivot();
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 透视表表格行排序拖放核心驱动逻辑
+// ════════════════════════════════════════════════════════════
+function onRowDragStart(e, rowId) {
+  _draggedRowIndex = rowId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', rowId);
+  e.currentTarget.classList.add('is-dragging-row');
+  e.stopPropagation();
+}
+
+function onRowDragOver(e, rowEl) {
+  e.preventDefault();
+  e.stopPropagation();
+  const draggingId = _draggedRowIndex;
+  const targetId = rowEl.dataset.rowId;
+  
+  if (draggingId === targetId) return;
+
+  // 跨层级保护：禁止非同级行胡乱交叉排序（如lvl-1拖入lvl-0外），保障树状结构数据不崩溃
+  const sourceLvl = String(draggingId).split('-').length;
+  const targetLvl = String(targetId).split('-').length;
+  if (sourceLvl !== targetLvl) return;
+
+  rowEl.classList.add('drag-row-over');
+}
+
+function onRowDragLeave(e, rowEl) {
+  rowEl.classList.remove('drag-row-over');
+}
+
+function onRowDragEnd(e) {
+  e.currentTarget.classList.remove('is-dragging-row');
+  document.querySelectorAll('.pout tr').forEach(tr => tr.classList.remove('drag-row-over'));
+}
+
+function onRowDrop(e, targetRowId) {
+  e.preventDefault();
+  e.stopPropagation();
+  document.querySelectorAll('.pout tr').forEach(tr => tr.classList.remove('drag-row-over'));
+  
+  const sourceRowId = e.dataTransfer.getData('text/plain') || _draggedRowIndex;
+  if (!sourceRowId || sourceRowId === targetRowId) return;
+
+  const sourceParts = String(sourceRowId).split('-');
+  const targetParts = String(targetRowId).split('-');
+  
+  // 安全限制：保证同父级目录下的子节点在内部拖拽
+  if (sourceParts.length !== targetParts.length) return;
+  for(let i=0; i<sourceParts.length-1; i++) {
+    if (sourceParts[i] !== targetParts[i]) return; // 必须是同一个父节点分支
+  }
+
+  // 1. 同级首层 (Level 0) 的拖动
+  if (sourceParts.length === 1) {
+    const sIdx = parseInt(sourceParts[0]);
+    const tIdx = parseInt(targetParts[0]);
+    
+    if (!isNaN(sIdx) && !isNaN(tIdx)) {
+      const targetItem = _dispTree.splice(sIdx, 1)[0];
+      _dispTree.splice(tIdx, 0, targetItem);
+      
+      // 同步对底层完整无过滤树进行重排
+      if (pcfg.rows.length > 0) {
+        // 由于没有用排序重置，此操作会生成全新的层级状态视图
+        pivotSortField = null; // 废止当前的默认数据排序，开启手动序列
+      }
+    }
+  } 
+  // 2. 跨子层级 (Level 1 或 Level 2) 树重组 
+  else {
+    const parentIndices = sourceParts.slice(0, -1);
+    const sLast = sourceParts[sourceParts.length - 1];
+    const tLast = targetParts[targetParts.length - 1];
+
+    // 通过索引链逐级在全局树上寻址找到该父元素 children 数组
+    let currBranch = _dispTree;
+    for (let i = 0; i < parentIndices.length; i++) {
+      // 奇数部分是索引号，偶数部分是对应树标签
+      if (i % 2 === 0) {
+        const branchIdx = parseInt(parentIndices[i]);
+        if (currBranch[branchIdx]) {
+          currBranch = currBranch[branchIdx].children;
+        }
+      }
+    }
+
+    if (Array.isArray(currBranch)) {
+      const sIdx = currBranch.findIndex(node => node.key === sLast);
+      const tIdx = currBranch.findIndex(node => node.key === tLast);
+      if (sIdx !== -1 && tIdx !== -1) {
+        const targetItem = currBranch.splice(sIdx, 1)[0];
+        currBranch.splice(tIdx, 0, targetItem);
+      }
+    }
+  }
+
+  _draggedRowIndex = -1;
+  genPivot(); // 手动重新编译生成最新的行序列视图
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 表格行列间距自由调整逻辑（拖拉形式）
+// ════════════════════════════════════════════════════════════
+function initPivotResizers() {
+  const table = document.querySelector('#pivOut table');
+  if (!table) return;
+
+  // 1. 列宽调整 (.col-resizer)
+  const cols = table.querySelectorAll('thead th');
+  cols.forEach(col => {
+    let resizer = col.querySelector('.col-resizer');
+    if (!resizer) {
+      resizer = document.createElement('div');
+      resizer.className = 'col-resizer';
+      col.appendChild(resizer);
+    }
+    
+    resizer.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      const startX = e.pageX;
+      const startWidth = col.offsetWidth;
+      
+      const onMouseMove = function (e) {
+        const width = startWidth + (e.pageX - startX);
+        col.style.width = width + 'px';
+        col.style.minWidth = width + 'px';
+      };
+      
+      const onMouseUp = function () {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  });
+
+  // 2. 行高/间距调整 (.row-resizer)
+  const rows = table.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const firstCell = row.querySelector('td.rl');
+    if (!firstCell) return;
+    
+    let resizer = firstCell.querySelector('.row-resizer');
+    if (!resizer) {
+      resizer = document.createElement('div');
+      resizer.className = 'row-resizer';
+      firstCell.appendChild(resizer);
+    }
+    
+    resizer.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      const startY = e.pageY;
+      const startHeight = row.offsetHeight;
+      
+      const onMouseMove = function (e) {
+        const height = startHeight + (e.pageY - startY);
+        row.style.height = height + 'px';
+        row.querySelectorAll('td').forEach(cell => {
+          cell.style.height = height + 'px';
+        });
+      };
+      
+      const onMouseUp = function () {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  Pivot Toolbar
+// ════════════════════════════════════════════════════════════
+function renderPivotToolbar(showVals,cKeys){
+  const active=Object.keys(pivotRowFilters).filter(k=>pivotRowFilters[k]?.size>0);
+  let rfHtml='';
+  if(active.length){
+    rfHtml=`<div class="rf-tags-row">
+      <span style="font-size:11px;color:#888;white-space:nowrap;margin-right:4px">行筛选中：</span>`
+      +active.map(f=>{
+        const s=pivotRowFilters[f];
+        const arr=[...s];
+        const label=arr.length<=3?arr.join('、'):`${arr.slice(0,3).join('、')} 等${arr.length}项`;
+        return`<span class="rf-tag">${escHtml(f)}: ${escHtml(label)}<span class="rf-tag-clr" onclick="clearRowFilter('${escAttr(f)}')">✕</span></span>`;
+      }).join('')
+      +`<span style="font-size:11px;color:#e32119;cursor:pointer;margin-left:6px" onclick="clearAllRowFilters()">清除全部</span>
+    </div>`;
+  }
+
+  const isBetween = pivotFilterOp === 'between';
+  const valInputsHtml = isBetween 
+    ? `<input class="pt-inp" type="number" id="pt-inp-min" value="${pivotFilterVal}" onchange="pivotFilterVal=+this.value" placeholder="Min" style="width:70px">
+       <span style="font-size:11px;color:#aaa">至</span>
+       <input class="pt-inp" type="number" id="pt-inp-max" value="${pivotFilterValMax}" onchange="pivotFilterValMax=+this.value" placeholder="Max" style="width:70px">`
+    : `<input class="pt-inp" type="number" id="pt-inp-single" value="${pivotFilterVal}" onchange="pivotFilterVal=+this.value" style="width:80px">`;
+
+  document.getElementById('pivot-toolbar').innerHTML=rfHtml+`
+  <div class="pivot-toolbar">
+    <span class="pt-lbl">排序：</span>
+    <select class="pt-sel" onchange="pivotSortField=this.value;genPivot()">
+      <option value="">不排序</option>
+      ${showVals.map(v=>`<option value="${escAttr(v)}"${pivotSortField===v?' selected':''}>${escHtml(v)}</option>`).join('')}
+    </select>
+    <select class="pt-sel-sm" onchange="pivotSortDir=this.value;genPivot()">
+      <option value="desc"${pivotSortDir==='desc'?' selected':''}>↓降序</option>
+      <option value="asc"${pivotSortDir==='asc'?' selected':''}>↑升序</option>
+    </select>
+    <span class="pt-sep"></span>
+    <span class="pt-lbl">值过滤：</span>
+    <select class="pt-sel" onchange="pivotFilterField=this.value">
+      <option value="">选择字段…</option>
+      ${showVals.map(v=>`<option value="${escAttr(v)}"${pivotFilterField===v?' selected':''}>${escHtml(v)}</option>`).join('')}
+    </select>
+    <select class="pt-sel-sm" onchange="onPivotFilterOpChange(this.value)" style="width:72px">
+      <option value="gt"${pivotFilterOp==='gt'?' selected':''}>&gt;</option>
+      <option value="gte"${pivotFilterOp==='gte'?' selected':''}>&ge;</option>
+      <option value="lt"${pivotFilterOp==='lt'?' selected':''}>&lt;</option>
+      <option value="lte"${pivotFilterOp==='lte'?' selected':''}>&le;</option>
+      <option value="eq"${pivotFilterOp==='eq'?' selected':''}>＝</option>
+      <option value="between"${isBetween?' selected':''}>区间</option>
+    </select>
+    <span id="pt-inp-container" style="display:inline-flex;align-items:center;gap:4px">
+      ${valInputsHtml}
+    </span>
+    <button class="pt-btn${pivotFilterActive?' on':''}" onclick="pivotFilterActive=!pivotFilterActive;genPivot()">${pivotFilterActive?'✅ 过滤中':'应用过滤'}</button>
+    <span class="pt-sep"></span>
+    <button class="pt-btn export" onclick="exportPivotToExcel()">⬇ 导出Excel</button>
+  </div>`;
+}
+
+function onPivotFilterOpChange(opValue) {
+  pivotFilterOp = opValue;
+  const container = document.getElementById('pt-inp-container');
+  if (!container) return;
+  if (opValue === 'between') {
+    container.innerHTML = `
+      <input class="pt-inp" type="number" id="pt-inp-min" value="${pivotFilterVal}" onchange="pivotFilterVal=+this.value" placeholder="Min" style="width:70px">
+      <span style="font-size:11px;color:#aaa">至</span>
+      <input class="pt-inp" type="number" id="pt-inp-max" value="${pivotFilterValMax}" onchange="pivotFilterValMax=+this.value" placeholder="Max" style="width:70px">
+    `;
+  } else {
+    container.innerHTML = `
+      <input class="pt-inp" type="number" id="pt-inp-single" value="${pivotFilterVal}" onchange="pivotFilterVal=+this.value" style="width:80px">
+    `;
+  }
+}
+
+function clearRowFilter(field){delete pivotRowFilters[field];rTags('rows');if(_lastCfgHash)genPivot();}
+function clearAllRowFilters(){pivotRowFilters={};rTags('rows');if(_lastCfgHash)genPivot();}
+
+// ════════════════════════════════════════════════════════════
+//  Export Pivot
+// ════════════════════════════════════════════════════════════
+function exportPivotToExcel(){
+  const tbl=document.querySelector('#pivOut table');
+  if(!tbl){alert('请先生成透视表！');return;}
+  const ws=XLSX.utils.table_to_sheet(tbl);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'数据透视');
+  XLSX.writeFile(wb,`透视表_${getDateStr()}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ★ 周报自动化模块
+// ════════════════════════════════════════════════════════════
+function buildReportUI(){
+  renderThresholdPanel();
+}
+
+function renderThresholdPanel() {
+  let cardsHtml = '';
+  const sorted = [...customThresholds].sort((a,b)=>a-b);
+  
+  for(let i=0; i<sorted.length; i++){
+    cardsHtml += `
+      <div class="tb-card">
+        <span style="font-size:11.5px;color:#64748b">门槛值 ${i+1}:</span>
+        <input type="number" class="tb-inp" value="${sorted[i]}" onchange="changeThreshold(${i}, +this.value)">
+        <span class="tb-btn-del" onclick="removeThreshold(${i})">✕</span>
+      </div>`;
+  }
+
+  document.getElementById('tp-report').innerHTML=`
+  <div class="report-container">
+    <div class="control-panel">
+      <span class="control-lbl">⚙ 消耗分布区间自定义（以去重合并后素材消耗为计算基准）</span>
+      <div class="threshold-builder-grid">
+        ${cardsHtml}
+        <button class="tb-btn-add" onclick="addThreshold()">➕ 新增门槛值</button>
+      </div>
+      <div class="report-actions">
+        <button class="btn-action btn-primary" onclick="generateAutoReport()"><span style="font-size:14px">🔄</span> 点击同步数据透视表(应用筛选)</button>
+        <button class="btn-action btn-secondary" onclick="copyReport('report-preview')">📋 一键复制完整周报</button>
+      </div>
+    </div>
+    <div class="report-layout">
+      <div class="report-preview-box">
+        <div id="report-preview" class="report-html-content" contenteditable="true"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function changeThreshold(idx, val) {
+  if(!isNaN(val) && val > 0) {
+    customThresholds[idx] = val;
+    customThresholds.sort((a,b)=>a-b);
+    renderThresholdPanel();
+  }
+}
+
+function removeThreshold(idx) {
+  if (customThresholds.length <= 1) {
+    alert("至少保留一个门槛值！");
+    return;
+  }
+  customThresholds.splice(idx, 1);
+  renderThresholdPanel();
+}
+
+function addThreshold() {
+  const maxVal = customThresholds.length ? Math.max(...customThresholds) : 0;
+  customThresholds.push(maxVal + 5000);
+  renderThresholdPanel();
+}
+
+// ════════════════════════════════════════════════════════════
+//  Get Date Range
+// ════════════════════════════════════════════════════════════
+function getRangeDates(){
+  if(!DATA.length)return '4/27-5/5';
+  const dates=DATA.map(r=>String(r['剪辑日期']||r['日期']||'')).filter(d=>d&&d.includes('/')||d.includes('-'));
+  if(!dates.length)return '4/27-5/5';
+  dates.sort();
+  const formatD=d=>d.replace(/^\d{4}[\/\-]/,'');
+  return `${formatD(dates[0])}-${formatD(dates[dates.length-1])}`;
+}
+
+// ★ 周报数据生成引擎
+function generateAutoReport(){
+  if(!DATA.length)return;
+  
+  const dateRange=getRangeDates();
+  
+  // ★ 核心智能列定位算法：精准定位消耗、展现、点击、订单和播放数量（剔除百分比、率、比等列，防止错误套用）
+  const spdField=NUM_HEADERS.find(h=>(/^spd/i.test(h)||/消耗/i.test(h)) && !/率|比|ROI/i.test(h))||'整体消耗';
+  const gmvField=NUM_HEADERS.find(h=>(/gmv/i.test(h)||/成交金额/i.test(h)||/成交额/i.test(h)||/实际支付/i.test(h)) && !/率|比|ROI/i.test(h))||'整体成交金额';
+  const impField=NUM_HEADERS.find(h=>(/展现/i.test(h)||/曝光/i.test(h)) && !/率|比|ROI/i.test(h))||'整体展现次数';
+  const clickField=NUM_HEADERS.find(h=>(/点击/i.test(h)) && !/率|比|ROI/i.test(h))||'整体点击次数';
+  const orderField=NUM_HEADERS.find(h=>(/订单/i.test(h)||/成交.*数/i.test(h)) && !/率|比|ROI/i.test(h))||'整体成交订单数';
+  const playField=NUM_HEADERS.find(h=>(/播放/i.test(h)) && !/率|比|完播/i.test(h))||'视频播放数';
+
+  // 3s播放数 and 视频完播数
+  const play3sField = '3秒播放数';
+  const playOverField = '视频完播数';
+  
+  // ★ 提取透视表当前的“行筛选”与“值过滤”后产生的合并数据集
+  let M_DATA = getPivotData();
+
+  // 应用值过滤 (Value Filters) 对周报数据完美同步
+  if (pivotFilterActive && pivotFilterField) {
+    const isDerived = !!DERIVED_METRICS[pivotFilterField];
+    const isPct = isDerived || isPctColRaw(pivotFilterField);
+    
+    M_DATA = M_DATA.filter(node => {
+      let v = 0;
+      if (isDerived) {
+        const dm = DERIVED_METRICS[pivotFilterField];
+        const numSum = parseFloat(node[dm.num] || 0);
+        const denSum = parseFloat(node[dm.den] || 0);
+        v = denSum > 0 ? (numSum / denSum) : 0;
+      } else {
+        v = parseFloat(String(node[pivotFilterField] || '').replace(/[%,]/g, '')) || 0;
+        if (isPct) v = v / 100;
+      }
+
+      const t = pivotFilterVal;
+      const tMax = pivotFilterValMax;
+      switch (pivotFilterOp) {
+        case 'gt': return v > t;
+        case 'gte': return v >= t;
+        case 'lt': return v < t;
+        case 'lte': return v <= t;
+        case 'eq': return v === t;
+        case 'between': return v >= t && v <= tMax;
+        default: return true;
+      }
+    });
+  }
+
+  // 2. Overall 指标
+  const totalSpd=M_DATA.reduce((s,r)=>{const v=parseFloat(String(r[spdField]||'').replace(/,/g,''));return s+(isNaN(v)?0:v);},0);
+  const totalRows=M_DATA.length; 
+  const avgSpd=totalRows > 0 ? (totalSpd / totalRows) : 0;
+  
+  // 3. 动态区间计算
+  const sortedThresholds = [...customThresholds].sort((a,b)=>a-b);
+  const rangeBuckets=[];
+  for(let i=0; i<=sortedThresholds.length; i++){
+    let label='';
+    if(i===0){
+      label=`<${formatK(sortedThresholds[0])}`;
+    }else if(i===sortedThresholds.length){
+      label=`>${formatK(sortedThresholds[sortedThresholds.length-1])}`;
+    }else{
+      label=`${formatK(sortedThresholds[i-1])}-${formatK(sortedThresholds[i])}`;
+    }
+    rangeBuckets.push({label:label, min: i===0?0:sortedThresholds[i-1], max: i===sortedThresholds.length?Infinity:sortedThresholds[i], cnt:0});
+  }
+
+  function formatK(num){
+    if(num>=10000) return (num/10000)+'W';
+    if(num>=1000) return (num/1000)+'K';
+    return num;
+  }
+
+  M_DATA.forEach(r=>{
+    const v=parseFloat(String(r[spdField]||'').replace(/,/g,''))||0;
+    for(let bucket of rangeBuckets){
+      if(v>=bucket.min && v<bucket.max){
+        bucket.cnt++;
+        break;
+      }
+    }
+  });
+
+  let overallRangeRowsHtml='';
+  rangeBuckets.forEach(b=>{
+    const pct=totalRows>0?((b.cnt/totalRows)*100).toFixed(1)+'%':'0%';
+    overallRangeRowsHtml+=`<tr>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center;"><b>${b.label}</b></td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${b.cnt}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${pct}</td>
+    </tr>`;
+  });
+
+  // 4. SKU 级数据树建立
+  const nestedSku = {};
+
+  // ★ 初始化大盘汇总指标
+  let gtCnt = 0, gtSpd = 0, gtGmv = 0, gtImp = 0, gtClicks = 0, gtOrders = 0, gtPlays = 0, gtPlay3s = 0, gtPlayOver = 0;
+
+  M_DATA.forEach(r=>{
+    const prod = String(r['产品'] || '未知产品').trim();
+    const dir = String(r['内容方向'] || '未归类方向').trim();
+    const cType = String(r['内容类型'] || '未归类类型').trim();
+
+    const spd = parseFloat(String(r[spdField]||'').replace(/,/g,''))||0;
+    const gmv = parseFloat(String(r[gmvField]||'').replace(/,/g,''))||0;
+    const imp = parseFloat(String(r[impField]||'').replace(/,/g,''))||0;
+    const clicks = parseFloat(String(r[clickField]||'').replace(/,/g,''))||0;
+    const orders = parseFloat(String(r[orderField]||'').replace(/,/g,''))||0;
+    const plays = parseFloat(String(r[playField]||'').replace(/,/g,''))||0;
+    const play3s = parseFloat(String(r[play3sField]||'').replace(/,/g,''))||0;
+    const playOver = parseFloat(String(r[playOverField]||'').replace(/,/g,''))||0;
+
+    if(!nestedSku[prod]) {
+      nestedSku[prod] = { 
+        total: { cnt:0, spd:0, gmv:0, imp:0, clicks:0, orders:0, plays:0, play3s:0, playOver:0 },
+        dirs: {}
+      };
+    }
+
+    if(!nestedSku[prod].dirs[dir]) {
+      nestedSku[prod].dirs[dir] = {};
+    }
+
+    if(!nestedSku[prod].dirs[dir][cType]) {
+      nestedSku[prod].dirs[dir][cType] = { cnt:0, spd:0, gmv:0, imp:0, clicks:0, orders:0, plays:0, play3s:0, playOver:0 };
+    }
+
+    const itemsCnt = r['素材条数'] || 1;
+    nestedSku[prod].dirs[dir][cType].cnt += itemsCnt;
+    nestedSku[prod].dirs[dir][cType].spd += spd;
+    nestedSku[prod].dirs[dir][cType].gmv += gmv;
+    nestedSku[prod].dirs[dir][cType].imp += imp;
+    nestedSku[prod].dirs[dir][cType].clicks += clicks;
+    nestedSku[prod].dirs[dir][cType].orders += orders;
+    nestedSku[prod].dirs[dir][cType].plays += plays;
+    nestedSku[prod].dirs[dir][cType].play3s += play3s;
+    nestedSku[prod].dirs[dir][cType].playOver += playOver;
+
+    nestedSku[prod].total.cnt += itemsCnt;
+    nestedSku[prod].total.spd += spd;
+    nestedSku[prod].total.gmv += gmv;
+    nestedSku[prod].total.imp += imp;
+    nestedSku[prod].total.clicks += clicks;
+    nestedSku[prod].total.orders += orders;
+    nestedSku[prod].total.plays += plays;
+    nestedSku[prod].total.play3s += play3s;
+    nestedSku[prod].total.playOver += playOver;
+
+    // 汇总大盘总计
+    gtCnt += itemsCnt;
+    gtSpd += spd;
+    gtGmv += gmv;
+    gtImp += imp;
+    gtClicks += clicks;
+    gtOrders += orders;
+    gtPlays += plays;
+    gtPlay3s += play3s;
+    gtPlayOver += playOver;
+  });
+
+  const totalGmv = M_DATA.reduce((s,r)=>{const v=parseFloat(String(r[gmvField]||'').replace(/,/g,''));return s+(isNaN(v)?0:v);},0);
+
+  let skuRowsHtml='';
+  Object.keys(nestedSku).forEach(prod => {
+    const prodData = nestedSku[prod];
+    const total = prodData.total;
+    const dirKeys = Object.keys(prodData.dirs);
+    
+    let totalRowSpan = 1;
+    dirKeys.forEach(dk => {
+      const typeKeys = Object.keys(prodData.dirs[dk]);
+      totalRowSpan += (1 + typeKeys.length);
+    });
+
+    // TTL行大类数据计算
+    const ttlSpdPct = totalSpd > 0 ? ((total.spd / totalSpd) * 100).toFixed(1) + '%' : '0.0%';
+    const ttlGmvPct = totalGmv > 0 ? ((total.gmv / totalGmv) * 100).toFixed(1) + '%' : '0.0%';
+    const ttlCntPct = totalRows > 0 ? ((total.cnt / totalRows) * 100).toFixed(1) + '%' : '0.0%';
+    
+    // ★ 整体 CTR / CVR 算法精确漏斗计算（完美规避直接读取百分比列的问题）
+    const ttlCtr = total.imp > 0 ? ((total.clicks / total.imp) * 100).toFixed(2) + '%' : '0.00%';
+    const ttlCvr = total.clicks > 0 ? ((total.orders / total.clicks) * 100).toFixed(2) + '%' : '0.00%';
+    
+    const ttlRoi = total.spd > 0 ? (total.gmv / total.spd).toFixed(2) : '0.00';
+    const ttl3sRate = total.plays > 0 ? ((total.play3s / total.plays) * 100).toFixed(1) + '%' : '0.0%';
+    const ttlOverRate = total.plays > 0 ? ((total.playOver / total.plays) * 100).toFixed(1) + '%' : '0.0%';
+
+    // SKU 级表头行顺序
+    skuRowsHtml += `<tr>
+      <td rowspan="${totalRowSpan}" style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color:#f8fafc; font-weight:700; vertical-align:middle; color:#1e293b">${escHtml(prod)}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight:900; background-color: #eaeef3; color: #0f172a">TTL</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700; background-color: #eaeef3">${total.cnt}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700; background-color: #eaeef3">${Math.round(total.spd).toLocaleString()}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttlSpdPct}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${total.cnt > 0 ? Math.round(total.spd / total.cnt).toLocaleString() : '0'}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700; background-color: #eaeef3">${Math.round(total.gmv).toLocaleString()}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttlGmvPct}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#e32119; font-weight:700">${ttlRoi}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttlCtr}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttlCvr}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttl3sRate}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #eaeef3; color:#475569">${ttlOverRate}</td>
+    </tr>`;
+
+    // 渲染方向
+    dirKeys.forEach(dk => {
+      const types = prodData.dirs[dk];
+      const typeKeys = Object.keys(types);
+      if (typeKeys.length === 0) return;
+
+      let subCnt = 0, subSpd = 0, subGmv = 0, subImp = 0, subClicks = 0, subOrders = 0, subPlays = 0, subPlay3s = 0, subPlayOver = 0;
+      typeKeys.forEach(k => {
+        const item = types[k];
+        subCnt += item.cnt;
+        subSpd += item.spd;
+        subGmv += item.gmv;
+        subImp += item.imp;
+        subClicks += item.clicks;
+        subOrders += item.orders;
+        subPlays += item.plays;
+        subPlay3s += item.play3s;
+        subPlayOver += item.playOver;
+      });
+
+      const subSpdPct = total.spd > 0 ? ((subSpd / total.spd) * 100).toFixed(1) + '%' : '0.0%';
+      const subGmvPct = total.gmv > 0 ? ((subGmv / total.gmv) * 100).toFixed(1) + '%' : '0.0%';
+      
+      // ★ 打标汇总 CTR / CVR精确漏斗计算
+      const subCtr = subImp > 0 ? ((subClicks / subImp) * 100).toFixed(2) + '%' : '0.00%';
+      const subCvr = subClicks > 0 ? ((subOrders / subClicks) * 100).toFixed(2) + '%' : '0.00%';
+      
+      const subRoi = subSpd > 0 ? (subGmv / subSpd).toFixed(2) : '0.00';
+      const sub3sRate = subPlays > 0 ? ((subPlay3s / subPlays) * 100).toFixed(1) + '%' : '0.0%';
+      const subOverRate = subPlays > 0 ? ((subPlayOver / subPlays) * 100).toFixed(1) + '%' : '0.0%';
+
+      // 1. 生成打标汇总行
+      skuRowsHtml += `<tr style="background-color:#f8fafc; font-weight:700; color:#334155">
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: left; padding-left:14px; font-style:italic">➡ ${dk}汇总</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subCnt}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${Math.round(subSpd).toLocaleString()}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subSpdPct}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subCnt > 0 ? Math.round(subSpd / subCnt).toLocaleString() : '0'}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${Math.round(subGmv).toLocaleString()}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subGmvPct}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#e32119">${subRoi}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subCtr}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subCvr}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${sub3sRate}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${subOverRate}</td>
+      </tr>`;
+
+      // 2. 内容明细行
+      typeKeys.forEach(k => {
+        const item = types[k];
+        const spdPct = total.spd > 0 ? ((item.spd / total.spd) * 100).toFixed(1) + '%' : '0.0%';
+        const gmvPct = total.gmv > 0 ? ((item.gmv / total.gmv) * 100).toFixed(1) + '%' : '0.0%';
+        
+        // ★ 内容明细 CTR / CVR 精确漏斗计算
+        const ctr = item.imp > 0 ? ((item.clicks / item.imp) * 100).toFixed(2) + '%' : '0.00%';
+        const cvr = item.clicks > 0 ? ((item.orders / item.clicks) * 100).toFixed(2) + '%' : '0.00%';
+        
+        const roi = item.spd > 0 ? (item.gmv / item.spd).toFixed(2) : '0.00';
+        const rate3s = item.plays > 0 ? ((item.play3s / item.plays) * 100).toFixed(1) + '%' : '0.0%';
+        const rateOver = item.plays > 0 ? ((item.playOver / item.plays) * 100).toFixed(1) + '%' : '0.0%';
+
+        skuRowsHtml += `<tr>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: left; padding-left:24px; color:#475569">${escHtml(k)}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.cnt}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${Math.round(item.spd).toLocaleString()}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#64748b">${spdPct}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#64748b">${item.cnt > 0 ? Math.round(item.spd / item.cnt).toLocaleString() : '0'}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${Math.round(item.gmv).toLocaleString()}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#64748b">${gmvPct}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700">${roi}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#475569">${ctr}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#475569">${cvr}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#475569">${rate3s}</td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#475569">${rateOver}</td>
+        </tr>`;
+      });
+    });
+  });
+
+  // ★ 整体大盘总计漏斗指标计算
+  const gtCtr = gtImp > 0 ? ((gtClicks / gtImp) * 100).toFixed(2) + '%' : '0.00%';
+  const gtCvr = gtClicks > 0 ? ((gtOrders / gtClicks) * 100).toFixed(2) + '%' : '0.00%';
+  const gtRoi = gtSpd > 0 ? (gtGmv / gtSpd).toFixed(2) : '0.00';
+  const gt3sRate = gtPlays > 0 ? ((gtPlay3s / gtPlays) * 100).toFixed(1) + '%' : '0.0%';
+  const gtOverRate = gtPlays > 0 ? ((gtPlayOver / gtPlays) * 100).toFixed(1) + '%' : '0.0%';
+
+  // ★ 追加大盘总结汇总行 (在表格最底部)
+  skuRowsHtml += `
+    <tr class="total-row" style="background-color: #e8eeff !important; font-weight: 700; border-top: 2px solid #b8c0e0;">
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e"><b>总计 (Grand Total)</b></td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #dde6f7; color: #1a1a2e"><b>ALL</b></td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e">${gtCnt}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e">${Math.round(gtSpd).toLocaleString()}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #475569">100.0%</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #475569">${gtCnt > 0 ? Math.round(gtSpd / gtCnt).toLocaleString() : '0'}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e">${Math.round(gtGmv).toLocaleString()}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #475569">100.0%</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #e32119; font-weight: 900">${gtRoi}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e">${gtCtr}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #1a1a2e">${gtCvr}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #475569">${gt3sRate}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #dde6f7; color: #475569">${gtOverRate}</td>
+    </tr>`;
+
+  // 4. 数据自动诊断分析
+  let maxProduct='', maxProductSpd=-1;
+  let maxRoiProduct='', maxProductRoi=-1;
+  let maxDirName='', maxDirSpd=-1;
+
+  Object.keys(nestedSku).forEach(p => {
+    const pD = nestedSku[p];
+    if(pD.total.spd > maxProductSpd) { maxProductSpd = pD.total.spd; maxProduct = p; }
+    const pRoi = pD.total.spd>0 ? (pD.total.gmv/pD.total.spd) : 0;
+    if(pRoi > maxProductRoi) { maxProductRoi = pRoi; maxRoiProduct = p; }
+
+    Object.keys(pD.dirs).forEach(dk => {
+      let dSpd = 0;
+      Object.values(pD.dirs[dk]).forEach(i=> { dSpd += i.spd; });
+      if(dSpd > maxDirSpd) { maxDirSpd = dSpd; maxDirName = `${dk}方向(${p})`; }
+    });
+  });
+
+  const isPivotFiltered = (Object.keys(pivotRowFilters).length > 0 || (pivotFilterActive && pivotFilterField));
+  const syncBadge = isPivotFiltered 
+    ? `<span style="font-size:11.5px; background-color:#fff3cd; color:#856404; padding:3px 10px; border-radius:12px; font-weight:700; margin-left:10px">⚠ 已应用数据透视表筛选过滤共 ${totalRows} 条数据</span>`
+    : `<span style="font-size:11.5px; background-color:#e8f5e9; color:#2e7d32; padding:3px 10px; border-radius:12px; font-weight:700; margin-left:10px">✅ 已与大盘全量去重数据完美同步</span>`;
+
+  const analHtml = `
+  <div class="anal-block">
+    <h3 style="font-size: 14.5px; font-weight: 700; color: #1e293b; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:8px">📊 周报数据归因与诊断分析自动化</h3>
+    <p style="font-size: 13px; color:#475569; margin-bottom:6px">1. <b>核心投放大类诊断</b>：本周期投放的主力产品线为 <b>${maxProduct}</b>（累计SPD消耗达 <b>${Math.round(maxProductSpd).toLocaleString()}</b>）。ROI表现最优的大类产品为 <b>${maxRoiProduct}</b>（周期总ROI为 <b>${maxProductRoi.toFixed(2)}</b>），建议结合爆量ROI表现对该优势SKU进行精细化视频复制与追投。</p>
+    <p style="font-size: 13px; color:#475569; margin-bottom:6px">2. <b>内容打标与漏斗归因</b>：本期核心转化与消耗承接主要聚焦于 <b>${maxDirName}</b>，整体条均表现优异。漏斗后端的整体点击率(CTR)与转化率均在稳健区间运行。对于高消耗占比的打标类型，应当重点监控单条消耗生命周期，及时补充素材颗粒度。</p>
+    <p style="font-size: 13px; color:#475569">3. <b>去重素材池层级梯度</b>：其中消耗处于 <b>${rangeBuckets.reduce((a,b)=>b.cnt>a.cnt?b:a).label}</b> 档位的素材占比最大（素材条数最多）。高额预算档位产生的GMV在整体大盘中发挥了压舱石作用。建议后续以ROI and GMV产出为准，对各消耗梯度实施阶梯式预算管理。</p>
+  </div>`;
+
+  const content=`
+  <div class="section-block" id="sec-overall">
+    <button class="btn-action btn-secondary sec-copy-btn" onclick="copyReport('sec-overall')">📋 复制此板块</button>
+    <h1 style="font-size: 22px; font-weight: 700; color: #111; margin-bottom: 6px; border-bottom: 2px solid #1a1a2e; padding-bottom: 8px;">周报数据自动化报告</h1>
+    <p style="font-size: 14px; color:#475569; margin-bottom:14px"><b>分析统计周期：</b>${dateRange} ${syncBadge}</p>
+    
+    <h2 style="font-size: 16px; font-weight: 700; color: #1a1a2e; margin-top: 18px; margin-bottom: 12px; border-left: 4px solid #e32119; padding-left: 10px;">一、数据 Overall</h2>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0;">
+      <thead>
+        <tr style="background-color: #1a1a2e; color: #fff;">
+          <th style="border: 1px solid #ddd; padding: 10px; text-align: center; min-width:140px">Campaign</th>
+          <th style="border: 1px solid #ddd; padding: 10px; text-align: center; background-color:#e32119">Y26 ${dateRange}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;"><b>整体消耗总计 (SPD)</b></td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700">${Math.round(totalSpd).toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;"><b>素材条数 (去重编号)</b></td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight:700; color:#1a7a3a">${totalRows}</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center;"><b>平均单条消耗 (基于去重条数)</b></td>
+          <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color:#e32119; font-weight:700">${Math.round(avgSpd).toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-block" id="sec-intervals">
+    <button class="btn-action btn-secondary sec-copy-btn" onclick="copyReport('sec-intervals')">📋 复制此板块</button>
+    <p style="font-weight: 700; margin-top:16px; font-size:13.5px; color:#1e293b">整体唯一素材消耗区间分布：</p>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0;">
+      <thead>
+        <tr style="background-color: #2c3e50; color: #fff;">
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">整体消耗区间</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">条数</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${overallRangeRowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-block" id="sec-sku">
+    <button class="btn-action btn-secondary sec-copy-btn" onclick="copyReport('sec-sku')">📋 复制此板块</button>
+    <h2 style="font-size: 16px; font-weight: 700; color: #1a1a2e; margin-top: 24px; margin-bottom: 12px; border-left: 4px solid #e32119; padding-left: 10px;">二、SKU 类型划分 (${dateRange})</h2>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 12px 0;">
+      <thead>
+        <tr style="background-color: #1a1a2e; color: #fff;">
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">产品</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">内容方向/类型</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">在投条数</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">SPD</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">SPD%</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">条均SPD</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">GMV</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">GMV%</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">ROI</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">CTR</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">CVR</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">3s完播率</th>
+          <th style="border: 1px solid #ddd; padding: 6px; text-align: center;">完播率</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${skuRowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-block" id="sec-analysis">
+    <button class="btn-action btn-secondary sec-copy-btn" onclick="copyReport('sec-analysis')">📋 复制此分析板块</button>
+    ${analHtml}
+  </div>`;
+
+  document.getElementById('report-preview').innerHTML=content;
+}
+
+function copyReport(containerId){
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const clone = container.cloneNode(true);
+  const btn = clone.querySelector('.sec-copy-btn');
+  if(btn) btn.remove();
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    const type = "text/html";
+    const blob = new Blob([clone.innerHTML], { type });
+    const textBlob = new Blob([clone.innerText], { type: "text/plain" });
+    const data = [new ClipboardItem({ [type]: blob, "text/plain": textBlob })];
+    
+    navigator.clipboard.write(data).then(() => {
+      alert("✅ 已成功复制该板块内容(含表格样式)，可完美粘贴！");
+    }).catch(err => {
+      fallbackCopy(clone);
+    });
+  } else {
+    fallbackCopy(clone);
+  }
+}
+
+function fallbackCopy(element) {
+  const hiddenDiv = document.createElement('div');
+  hiddenDiv.style.position = 'absolute';
+  hiddenDiv.style.left = '-9999px';
+  hiddenDiv.innerHTML = element.innerHTML;
+  document.body.appendChild(hiddenDiv);
+  
+  const range = document.createRange();
+  range.selectNodeContents(hiddenDiv);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  try {
+    document.execCommand('copy');
+    alert("✅ 板块内容已成功复制！");
+  } catch (err) {
+    alert("❌ 复制失败。");
+  }
+  selection.removeAllRanges();
+  document.body.removeChild(hiddenDiv);
+}
+</script>
+</body>
+</html>

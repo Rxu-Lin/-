@@ -1,2324 +1,1507 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkinCeuticals KOL Management Portal</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- JSZip 库 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- 引入 PDF.js 核心库 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        gold: {
-                            50: '#FDFBF7',
-                            100: '#FAF4E8',
-                            500: '#C5A059', /* 更高雅暗金 */
-                            600: '#A37F3D',
-                        },
-                        sc: {
-                            950: '#0B0C0E', /* 修丽可极黑 */
-                            900: '#121417', /* 科技黑 */
-                            800: '#1F2226', /* 深灰 */
-                            100: '#F4F5F6',
-                        }
-                    }
-                }
+    <title>百库内容智能工具汇集</title>
+    <meta name="description" content="BUYCOOR Tool Center，内容智能工具汇集。">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #050506;
+            --bg-soft: #0b0c0e;
+            --surface: rgba(255, 255, 255, 0.072);
+            --surface-strong: rgba(255, 255, 255, 0.11);
+            --border: rgba(255, 255, 255, 0.15);
+            --border-quiet: rgba(255, 255, 255, 0.09);
+            --text: #f5f7f7;
+            --muted: rgba(245, 247, 247, 0.68);
+            --faint: rgba(245, 247, 247, 0.44);
+            --accent: #d7e7e8;
+            --accent-2: #8db7bf;
+            --line: rgba(141, 183, 191, 0.28);
+            --shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+            --radius: 8px;
+            --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            background:
+                radial-gradient(circle at 18% 14%, rgba(141, 183, 191, 0.13), transparent 28vw),
+                radial-gradient(circle at 82% 6%, rgba(245, 247, 247, 0.08), transparent 26vw),
+                linear-gradient(135deg, #050506 0%, #090a0b 45%, #040405 100%);
+            color: var(--text);
+            font-family: Inter, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0;
+        }
+
+        body::before {
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            content: "";
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+            background-size: 88px 88px;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), transparent 76%);
+        }
+
+        body::after {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            content: "";
+            pointer-events: none;
+            background:
+                linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.045) 46%, transparent 58%),
+                radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 38%);
+            opacity: 0.5;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .particle-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            opacity: 1;
+            transition: opacity 420ms var(--ease);
+        }
+
+        body.focus-mode .particle-canvas {
+            opacity: 0.28 !important;
+            transition-property: none !important;
+        }
+
+        .page {
+            width: min(1180px, calc(100% - 40px));
+            margin: 0 auto;
+            padding: 28px 0 72px;
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 28px;
+            padding: 14px 0;
+            backdrop-filter: blur(20px);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            min-width: max-content;
+            border: 0;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .brand-mark {
+            display: grid;
+            width: 38px;
+            height: 38px;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .brand-name {
+            display: block;
+            max-width: 240px;
+            overflow: hidden;
+            font-size: 15px;
+            font-weight: 650;
+            line-height: 1;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .brand-sub {
+            display: block;
+            margin-top: 5px;
+            color: var(--faint);
+            font-size: 11px;
+            line-height: 1;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 5px;
+            border: 1px solid var(--border-quiet);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav-button {
+            min-height: 34px;
+            padding: 0 14px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 520;
+            line-height: 1;
+            white-space: nowrap;
+            transition: transform 180ms var(--ease), background 180ms var(--ease), color 180ms var(--ease), border-color 180ms var(--ease);
+        }
+
+        .nav-button:hover,
+        .nav-button.is-active {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+        }
+
+        .hero-nav {
+            position: relative;
+            gap: 8px;
+            padding: 7px;
+            overflow: visible;
+            border-color: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.055);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 18px 60px rgba(0, 0, 0, 0.22);
+        }
+
+        .hero-nav .nav-button {
+            min-height: 40px;
+            padding: 0 18px;
+        }
+
+        .nav-group {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .promo-menu {
+            position: absolute;
+            top: calc(100% + 9px);
+            left: 50%;
+            z-index: 18;
+            display: grid;
+            min-width: 86px;
+            gap: 4px;
+            padding: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            border-radius: var(--radius);
+            background: rgba(6, 7, 8, 0.94);
+            box-shadow: 0 20px 56px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+            backdrop-filter: blur(18px);
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -6px) scale(0.98);
+            transition: opacity 180ms var(--ease), transform 180ms var(--ease), visibility 180ms var(--ease);
+            visibility: hidden;
+        }
+
+        .nav-group.is-open .promo-menu,
+        .promo-menu.is-open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, 0) scale(1);
+            visibility: visible;
+        }
+
+        .promo-sub-button {
+            min-height: 32px;
+            padding: 0 16px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1;
+            text-align: center;
+            transition: transform 180ms var(--ease), border-color 180ms var(--ease), background 180ms var(--ease), color 180ms var(--ease);
+        }
+
+        .promo-sub-button:hover,
+        .promo-sub-button.is-active {
+            transform: translateY(-1px);
+            border-color: rgba(215, 231, 232, 0.22);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            min-width: max-content;
+        }
+
+        .mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 560;
+        }
+
+        .switch {
+            position: relative;
+            width: 46px;
+            height: 26px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.24);
+            transition: background 220ms var(--ease), border-color 220ms var(--ease), transform 220ms var(--ease);
+        }
+
+        .switch::after {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            content: "";
+            background: linear-gradient(145deg, #f8fbfb, #aebfc2);
+            box-shadow: 0 5px 18px rgba(141, 183, 191, 0.24);
+            transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .mode-toggle[aria-pressed="true"] .switch {
+            border-color: rgba(141, 183, 191, 0.38);
+            background: rgba(141, 183, 191, 0.18);
+            transform: scale(1.03);
+        }
+
+        .mode-toggle[aria-pressed="true"] .switch::after {
+            transform: translateX(20px);
+        }
+
+        .hero {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            align-items: center;
+            justify-items: center;
+            min-height: 560px;
+            padding: 78px 0 38px;
+        }
+
+        .hero-copy {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 1120px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            max-width: 1100px;
+            margin: 0 auto;
+            color: var(--text);
+            font-size: clamp(64px, 8.4vw, 112px);
+            font-weight: 680;
+            letter-spacing: 0;
+            line-height: 0.98;
+            overflow-wrap: anywhere;
+            text-wrap: balance;
+        }
+
+        h1 span {
+            display: block;
+        }
+
+        .hero-title {
+            max-width: 1160px;
+            font-family: "Arial Black", Impact, Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: clamp(74px, 9.6vw, 150px);
+            font-weight: 900;
+            line-height: 0.86;
+            color: #ffffff;
+            text-align: center;
+            text-wrap: balance;
+            word-break: normal;
+            overflow-wrap: normal;
+        }
+
+        .hero-title span {
+            white-space: nowrap;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 34px auto 0;
+            padding: 11px 34px 13px;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #050506;
+            font-size: clamp(30px, 4.1vw, 62px);
+            font-weight: 820;
+            line-height: 1.04;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+            white-space: nowrap;
+        }
+
+        .hero-text {
+            max-width: 720px;
+            margin: 18px auto 0;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.9;
+        }
+
+        .hero-actions {
+            position: relative;
+            z-index: 30;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 34px;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 44px;
+            padding: 0 17px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.09);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 620;
+            line-height: 1;
+            transition: transform 180ms var(--ease), border-color 180ms var(--ease), background 180ms var(--ease), box-shadow 180ms var(--ease);
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            border-color: rgba(215, 231, 232, 0.42);
+            background: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 18px 48px rgba(141, 183, 191, 0.12);
+        }
+
+        .button.primary {
+            background: rgba(245, 247, 247, 0.94);
+            color: #090a0b;
+            border-color: rgba(245, 247, 247, 0.94);
+        }
+
+        .button.primary:hover {
+            background: #ffffff;
+            box-shadow: 0 18px 54px rgba(245, 247, 247, 0.18);
+        }
+
+        .signal-panel {
+            display: none;
+        }
+
+        .signal-panel::before {
+            position: absolute;
+            inset: 36px 16px auto auto;
+            width: 250px;
+            height: 250px;
+            border: 1px solid rgba(215, 231, 232, 0.13);
+            border-radius: 50%;
+            content: "";
+            animation: slow-spin 24s linear infinite;
+        }
+
+        .signal-panel::after {
+            position: absolute;
+            inset: 118px auto auto 36px;
+            width: 132px;
+            height: 132px;
+            border: 1px solid rgba(141, 183, 191, 0.2);
+            border-radius: 50%;
+            content: "";
+            filter: blur(0.2px);
+            animation: slow-spin 18s linear infinite reverse;
+        }
+
+        .metric-stack {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            gap: 12px;
+            padding-top: 54px;
+        }
+
+        .metric-row {
+            display: grid;
+            grid-template-columns: 42px 1fr auto;
+            align-items: center;
+            gap: 14px;
+            min-height: 78px;
+            padding: 15px;
+            border: 1px solid var(--border-quiet);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.055);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), var(--shadow);
+            backdrop-filter: blur(18px);
+        }
+
+        .metric-row:nth-child(2) {
+            transform: translateX(24px);
+        }
+
+        .metric-row:nth-child(3) {
+            transform: translateX(-12px);
+        }
+
+        .metric-icon {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            border-radius: var(--radius);
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.055);
+        }
+
+        .metric-title {
+            margin: 0 0 5px;
+            font-size: 14px;
+            font-weight: 640;
+        }
+
+        .metric-copy {
+            margin: 0;
+            color: var(--faint);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .metric-value {
+            color: rgba(245, 247, 247, 0.82);
+            font-size: 12px;
+            font-weight: 650;
+        }
+
+        .tool-section {
+            padding: 16px 0 0;
+            text-align: center;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 24px;
+            margin-bottom: 18px;
+        }
+
+        .section-head h2 {
+            margin: 0;
+            color: var(--text);
+            font-size: clamp(26px, 3vw, 42px);
+            font-weight: 640;
+            letter-spacing: 0;
+        }
+
+        .section-head p {
+            max-width: 420px;
+            margin: 0;
+            color: var(--faint);
+            font-size: 13px;
+            line-height: 1.75;
+            text-align: center;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+            margin: 0 auto;
+        }
+
+        .tool-card {
+            position: relative;
+            display: flex;
+            min-height: 238px;
+            grid-column: span 2;
+            align-items: center;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            padding: 24px;
+            text-align: center;
+            border: 1px solid var(--border-quiet);
+            border-radius: var(--radius);
+            background:
+                linear-gradient(155deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.042)),
+                rgba(255, 255, 255, 0.035);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(24px);
+            cursor: pointer;
+            transform-origin: center;
+            transition: transform 240ms var(--ease), border-color 240ms var(--ease), box-shadow 240ms var(--ease), background 240ms var(--ease), opacity 260ms var(--ease);
+        }
+
+        .tool-card.feature {
+            min-height: 288px;
+            grid-column: span 4;
+        }
+
+        .tool-card::before {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            content: "";
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(215, 231, 232, 0.18), transparent 34%),
+                linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.08) 48%, transparent 72%);
+            opacity: 0;
+            transition: opacity 240ms var(--ease);
+        }
+
+        .tool-card::after {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            content: "";
+            pointer-events: none;
+            border-radius: inherit;
+            box-shadow:
+                inset 0 0 0 1px rgba(215, 231, 232, 0.6),
+                0 0 34px rgba(141, 183, 191, 0.28);
+            opacity: 0;
+            transition: opacity 240ms var(--ease);
+        }
+
+        .tool-card:hover,
+        .tool-card.is-hovered {
+            transform: translateY(-10px);
+            border-color: rgba(215, 231, 232, 0.68);
+            background:
+                linear-gradient(155deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.056)),
+                rgba(255, 255, 255, 0.05);
+            box-shadow:
+                0 30px 86px rgba(0, 0, 0, 0.46),
+                0 0 0 1px rgba(215, 231, 232, 0.16),
+                0 0 48px rgba(141, 183, 191, 0.24);
+        }
+
+        .tool-card:hover::before,
+        .tool-card.is-hovered::before {
+            opacity: 1;
+        }
+
+        .tool-card:hover::after,
+        .tool-card.is-hovered::after {
+            opacity: 1;
+        }
+
+        .tool-card.is-hidden {
+            display: none;
+        }
+
+        .tool-card:focus-visible {
+            outline: 2px solid rgba(215, 231, 232, 0.86);
+            outline-offset: 4px;
+        }
+
+        .card-top,
+        .card-bottom {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-top {
+            display: flex;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-icon {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            margin: 0 auto 28px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius);
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.065);
+            transition: border-color 240ms var(--ease), box-shadow 240ms var(--ease), background 240ms var(--ease);
+        }
+
+        .tool-card:hover .card-icon,
+        .tool-card.is-hovered .card-icon {
+            border-color: rgba(215, 231, 232, 0.45);
+            background: rgba(215, 231, 232, 0.1);
+            box-shadow: 0 0 24px rgba(141, 183, 191, 0.18);
+        }
+
+        .card-category {
+            margin: 0 0 10px;
+            color: var(--faint);
+            font-size: 12px;
+            font-weight: 620;
+            line-height: 1;
+        }
+
+        .tool-card h3 {
+            margin: 0;
+            color: var(--text);
+            font-size: clamp(21px, 2.3vw, 34px);
+            font-weight: 650;
+            letter-spacing: 0;
+            line-height: 1.15;
+        }
+
+        .tool-card:not(.feature) h3 {
+            font-size: 24px;
+        }
+
+        .card-copy {
+            max-width: 520px;
+            margin: 16px auto 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.78;
+        }
+
+        .card-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            margin-top: 28px;
+        }
+
+        .card-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.055);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1;
+            pointer-events: none;
+            transition: transform 180ms var(--ease), background 180ms var(--ease), border-color 180ms var(--ease);
+        }
+
+        .tool-card:hover .card-link,
+        .tool-card.is-hovered .card-link {
+            transform: translateY(-2px);
+            border-color: rgba(215, 231, 232, 0.34);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .toast {
+            position: fixed;
+            right: 22px;
+            bottom: 22px;
+            z-index: 20;
+            max-width: 320px;
+            padding: 14px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: var(--radius);
+            background: rgba(10, 12, 13, 0.78);
+            color: var(--text);
+            box-shadow: 0 18px 56px rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(18px);
+            font-size: 13px;
+            line-height: 1.65;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(12px);
+            transition: opacity 200ms var(--ease), transform 200ms var(--ease);
+        }
+
+        .toast.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal {
+            opacity: 0;
+            filter: blur(18px);
+            transform: translateY(22px) scale(0.985);
+            transition-property: opacity, filter, transform;
+            transition-duration: 780ms;
+            transition-timing-function: var(--ease);
+            transition-delay: var(--delay, 0ms);
+        }
+
+        .reveal.is-visible {
+            animation: reveal-in 760ms var(--ease) both;
+            animation-delay: var(--delay, 0ms);
+            opacity: 1 !important;
+            filter: blur(0) !important;
+            transform: translateY(0) scale(1) !important;
+            transition-property: none !important;
+            transition-delay: 0ms !important;
+        }
+
+        .reveal.is-settled {
+            animation: none !important;
+            opacity: 1 !important;
+            filter: blur(0) !important;
+            transform: translateY(0) scale(1) !important;
+        }
+
+        @keyframes reveal-in {
+            from {
+                opacity: 0;
+                filter: blur(18px);
+                transform: translateY(22px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                filter: blur(0);
+                transform: translateY(0) scale(1);
             }
         }
-    </script>
-    <style>
-        * {
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+        @keyframes slow-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        .sc-active-tab {
-            color: #C5A059 !important;
-            border-color: #C5A059 !important;
-            background-color: rgba(197, 160, 89, 0.05) !important;
+
+        @media (max-width: 980px) {
+            .page {
+                width: min(100% - 28px, 760px);
+            }
+
+            .site-header {
+                position: relative;
+                flex-wrap: wrap;
+            }
+
+            .nav {
+                order: 3;
+                width: 100%;
+                overflow-x: auto;
+                justify-content: flex-start;
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 28px;
+                min-height: auto;
+                padding-top: 54px;
+            }
+
+            .signal-panel {
+                min-height: 320px;
+            }
+
+            .metric-stack {
+                padding-top: 0;
+            }
+
+            .tool-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tool-card,
+            .tool-card.feature {
+                grid-column: span 1;
+            }
         }
-        /* 气泡提示动画 */
-        .preview-tooltip {
-            animation: fadeIn 0.1s ease-out;
-            pointer-events: none;
+
+        @media (max-width: 640px) {
+            .page {
+                width: min(100% - 24px, 480px);
+                padding-top: 18px;
+            }
+
+            .site-header {
+                gap: 14px;
+                padding-right: 58px;
+            }
+
+            .brand {
+                min-width: 0;
+            }
+
+            .brand-name {
+                max-width: 200px;
+            }
+
+            .brand-sub,
+            .mode-toggle span:first-child {
+                display: none;
+            }
+
+            .header-actions {
+                position: fixed;
+                top: 32px;
+                right: 72px;
+                z-index: 30;
+                margin-left: auto;
+                min-width: auto;
+            }
+
+            .mode-toggle {
+                flex-shrink: 0;
+            }
+
+            .mode-toggle .switch {
+                border-color: rgba(245, 247, 247, 0.46);
+                background: rgba(245, 247, 247, 0.2);
+                box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(245, 247, 247, 0.1);
+            }
+
+            h1 {
+                font-size: clamp(38px, 12vw, 52px);
+                line-height: 1.08;
+                word-break: break-all;
+            }
+
+            .hero-title {
+                font-size: clamp(46px, 14.5vw, 78px);
+                line-height: 0.9;
+                word-break: normal;
+            }
+
+            .hero-badge {
+                margin-top: 24px;
+                max-width: 100%;
+                padding: 9px 18px 11px;
+                font-size: clamp(26px, 9vw, 38px);
+                white-space: normal;
+            }
+
+            .hero {
+                padding: 38px 0 42px;
+            }
+
+            .hero-nav {
+                justify-content: flex-start;
+                gap: 3px;
+                padding: 4px;
+            }
+
+            .hero-nav .nav-button {
+                min-height: 36px;
+                padding: 0 8px;
+                font-size: 12px;
+            }
+
+            .hero-text {
+                font-size: 14px;
+            }
+
+            .hero-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .button {
+                width: 100%;
+            }
+
+            .metric-row,
+            .metric-row:nth-child(2),
+            .metric-row:nth-child(3) {
+                grid-template-columns: 38px 1fr;
+                transform: none;
+            }
+
+            .metric-value {
+                display: none;
+            }
+
+            .section-head {
+                align-items: center;
+                flex-direction: column;
+            }
+
+            .section-head p {
+                max-width: none;
+                text-align: center;
+            }
+
+            .tool-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tool-card {
+                min-height: 228px;
+                padding: 22px;
+            }
+
+            .card-bottom {
+                align-items: center;
+                flex-direction: column;
+            }
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.97) translateY(4px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        /* 未输入操作人姓名时的呼吸闪烁红框 */
-        .operator-warn {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-            animation: redPulse 1.5s infinite;
-        }
-        @keyframes redPulse {
-            0% { box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0px rgba(239, 68, 68, 0); }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen font-sans flex flex-col antialiased">
-
-    <!-- 顶部导航栏 -->
-    <header class="bg-sc-950 text-white py-5 px-10 flex flex-col lg:flex-row justify-between items-center shadow-md border-b border-gold-500/20 gap-4">
-        <div class="flex items-center space-x-4">
-            <div class="border-l-2 border-gold-500 pl-3">
-                <span class="text-2xl font-light tracking-[0.25em] text-white block">SKINCEUTICALS</span>
-                <span class="text-[10px] text-gold-500 tracking-[0.4em] uppercase block font-semibold">修丽可达人管理库</span>
-            </div>
-        </div>
-        
-        <!-- 导航切页 -->
-        <nav class="flex bg-sc-900 p-1 rounded-lg border border-gray-800/80">
-            <button id="nav-btn-import" onclick="switchPage('import')" class="flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all bg-gold-500 text-sc-950 shadow">
-                <i class="fa-solid fa-file-import text-xs"></i>
-                <span>素材分拣与初审</span>
+<body>
+    <canvas class="particle-canvas" id="particleCanvas" aria-hidden="true"></canvas>
+    <div class="page">
+        <header class="site-header reveal">
+            <button class="brand" type="button" aria-label="百库内容智能工具汇集">
+                <span class="brand-mark">BK</span>
+                <span>
+                    <span class="brand-name">百库内容智能工具汇集</span>
+                    <span class="brand-sub">Content Intelligence</span>
+                </span>
             </button>
-            <button id="nav-btn-library" onclick="switchPage('library')" class="flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all text-gray-400 hover:text-white">
-                <i class="fa-solid fa-database text-xs"></i>
-                <span>品牌合规达人库</span>
-            </button>
-        </nav>
 
-        <div class="flex items-center space-x-4">
-            <!-- 留痕操作人自定义配置 -->
-            <div class="text-right">
-                <span class="text-[10px] text-gray-400 block uppercase font-bold tracking-wider">当前操作人标签</span>
-                <input type="text" id="operator-name" value="请输入操作人姓名" onfocus="handleOperatorFocus(this)" onblur="handleOperatorBlur(this)" oninput="handleOperatorInput(this)" class="bg-sc-900 border border-red-500 rounded px-2 py-1 text-xs text-gold-500 text-right focus:outline-none focus:border-gold-500 font-bold w-40 operator-warn">
-            </div>
-            <div id="operator-avatar" class="w-8 h-8 rounded-full bg-sc-800 border border-gold-500/30 flex items-center justify-center text-xs text-gold-500 font-bold">??</div>
-        </div>
-    </header>
-
-    <!-- 主体区域 -->
-    <main class="flex-grow p-6 lg:p-10 max-w-[1700px] w-full mx-auto space-y-6">
-
-        <!-- 局域网公共盘 Y2026 连接面板 -->
-        <div class="bg-white rounded-xl shadow-sm p-6 border border-gold-500/20 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center space-x-3 text-left">
-                <div class="p-2.5 bg-gold-50 rounded-lg text-gold-500">
-                    <i class="fa-solid fa-network-wired text-xl"></i>
-                </div>
-                <div>
-                    <h4 class="text-sm font-bold text-sc-900">修丽可内网公共盘数据库联通</h4>
-                    <p class="text-xs text-gray-400 mt-0.5">目标物理库文件：<span class="font-mono text-gray-600 font-semibold select-all">\\ap.loreal.intra\departmentshare\MCN\内容中心\SKC\3-SKC视频素材\RTB授权达人视频\Y2026\sc_kol_db.json</span></p>
-                </div>
-            </div>
-            <div>
-                <!-- 唤醒 FileSystem 并建立长期授权机制 -->
-                <button id="btn-connect-dir" onclick="connectToSharedFolder()" class="bg-sc-950 hover:bg-gold-500 hover:text-sc-950 text-white text-xs font-bold py-2.5 px-5 rounded-lg shadow transition-all flex items-center">
-                    <i class="fa-solid fa-folder-closed mr-2"></i>📂 授权连接并激活此公共盘目录
+            <div class="header-actions">
+                <button class="mode-toggle" type="button" aria-pressed="false" id="modeToggle">
+                    <span>专注模式</span>
+                    <span class="switch" aria-hidden="true"></span>
                 </button>
-                <span id="connect-status" class="hidden text-xs text-green-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>已实时连接并自动锁定内网公共盘数据源</span>
             </div>
-        </div>
-        
-        <!-- ==================== 页面 1：总文件夹导入与初审 ==================== -->
-        <div id="page-import" class="space-y-6">
-            
-            <!-- 扁平无界上传引导板 -->
-            <div class="bg-white rounded-xl shadow-sm p-8 border border-gold-500/20 flex flex-col lg:flex-row justify-between items-center gap-6">
-                <div class="space-y-2 text-center lg:text-left">
-                    <h3 class="text-lg font-bold text-sc-900 tracking-wide flex items-center justify-center lg:justify-start">
-                        <i class="fa-solid fa-cloud-arrow-up text-gold-500 mr-2.5"></i> 一键上传当期达人总文件
-                    </h3>
-                    <p class="text-xs text-gray-400 select-none">
-                        请使用人配置好关联产品分类后，选择上传 <span class="font-bold text-sc-900">“达人总文件夹”</span> 或其对应的 <span class="font-bold text-sc-900">“ZIP 压缩包”</span>
-                    </p>
-                </div>
-                
-                <!-- 导入核心控件组 -->
-                <div class="flex flex-wrap items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
-                    <div class="w-56 text-left">
-                        <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">关联推广产品</label>
-                        <select id="import-product" class="bg-white border border-gray-300 text-sc-900 text-xs rounded-lg focus:ring-1 focus:ring-gold-500 focus:border-gold-500 block w-full p-2.5 font-bold">
-                            <option value="AGE面霜">AGE面霜</option>
-                            <option value="PTIOX精华">PTIOX精华</option>
-                            <option value="AGE家族">AGE家族</option>
-                            <option value="AGE精华">AGE精华</option>
-                            <option value="银伞防晒">银伞防晒</option>
-                            <option value="色修精华">色修精华</option>
-                        </select>
-                    </div>
+        </header>
 
-                    <div class="pt-5 flex flex-wrap gap-2 w-full sm:w-auto">
-                        <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
-                        <input type="file" id="zip-input" accept=".zip" class="hidden">
-                        
-                        <button id="btn-select-folder" disabled onclick="handleUploadButtonClick('folder')" class="w-full sm:w-auto bg-gray-300 text-gray-500 text-xs font-bold py-3 px-5 rounded-lg tracking-wider shadow-md flex items-center justify-center transition-all cursor-not-allowed">
-                            <i class="fa-solid fa-folder-open mr-2 text-sm"></i> 上传总文件夹
-                        </button>
-                        <button id="btn-select-zip" disabled onclick="handleUploadButtonClick('zip')" class="w-full sm:w-auto bg-gray-300 text-gray-500 text-xs font-bold py-3 px-5 rounded-lg tracking-wider shadow-md flex items-center justify-center transition-all cursor-not-allowed">
-                            <i class="fa-solid fa-file-zipper mr-2 text-sm"></i> 上传 ZIP 包
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 动态统计汇总看板卡片 -->
-            <div id="import-summary-card" class="hidden grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-5 rounded-xl border border-gold-500/10 shadow-sm animate-fadeIn">
-                <div class="border-r border-gray-100 pr-4">
-                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">🔍 本次扫描总数</span>
-                    <span id="summary-scan-count" class="text-2xl font-bold text-sc-900 mt-1 block">0 <span class="text-xs text-gray-500 font-normal">位达人</span></span>
-                </div>
-                <div class="border-r border-gray-100 px-4">
-                    <span class="text-[10px] text-green-600 font-bold uppercase tracking-wider block">✅ 合规齐备就绪</span>
-                    <span id="summary-ready-count" class="text-2xl font-bold text-green-600 mt-1 block">0 <span class="text-xs text-gray-500 font-normal">位可一键归档</span></span>
-                </div>
-                <div class="border-r border-gray-100 px-4">
-                    <span class="text-[10px] text-red-500 font-bold uppercase tracking-wider block">⚠ 资料不全阻滞</span>
-                    <span id="summary-pending-count" class="text-2xl font-bold text-red-500 mt-1 block">0 <span class="text-xs text-gray-500 font-normal">位已被挂起</span></span>
-                </div>
-                <div class="pl-4">
-                    <span class="text-[10px] text-gold-500 font-bold uppercase tracking-wider block">💾 当期已归档成功</span>
-                    <span id="summary-archived-count" class="text-2xl font-bold text-gold-500 mt-1 block">0 <span class="text-xs text-gray-500 font-normal">位已落盘</span></span>
-                </div>
-            </div>
-
-            <!-- 解析状态提示 -->
-            <div id="status-container" class="hidden p-4 bg-gold-50 border border-gold-500/10 rounded-xl flex items-center justify-between">
-                <span id="upload-status-text" class="text-xs text-sc-900 font-medium italic"></span>
-            </div>
-
-            <!-- 当次扫描临时初审表 -->
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h4 class="text-sm font-bold text-sc-900 tracking-wide uppercase">🔍 智能拆解：达人子目录解析结果</h4>
-                    
-                    <button id="btn-batch-save" onclick="saveAllCompleteToLibrary()" class="hidden bg-gold-500 hover:bg-gold-600 text-sc-950 text-xs font-extrabold px-5 py-2.5 rounded-lg shadow-md hover:scale-[1.02] transition-all flex items-center">
-                        <i class="fa-solid fa-square-check mr-2"></i>一键归档所有合规达人
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto border border-gray-100 rounded-xl">
-                    <table class="min-w-full divide-y divide-gray-200 text-xs">
-                        <thead class="bg-gray-50 text-gray-500 uppercase tracking-widest font-semibold">
-                            <tr>
-                                <th class="px-6 py-4 text-left">识别纯达人姓名 (支持修改)</th>
-                                <th class="px-6 py-4 text-center">关联推广产品</th>
-                                <th class="px-6 py-4 text-center">纯净版视频</th>
-                                <th class="px-6 py-4 text-center">发布版成片</th>
-                                <th class="px-6 py-4 text-center">授权书</th>
-                                <th class="px-6 py-4 text-center">智能识别授权到期日 (可修改)</th>
-                                <th class="px-6 py-4 text-center">文件完整度</th>
-                                <th class="px-6 py-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="upload-table-body" class="divide-y divide-gray-200">
-                            <tr>
-                                <td colspan="8" class="px-6 py-16 text-center text-gray-400">
-                                    <i class="fa-solid fa-network-wired text-3xl mb-3 block text-gold-500"></i>
-                                    为了保障多端协同，请先点击上方“📂 授权连接并激活此公共盘目录”按钮绑定数据库
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ==================== 页面 2：品牌达人合规资源库 ==================== -->
-        <div id="page-library" class="space-y-6 hidden">
-            
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 space-y-6">
-                
-                <div class="flex flex-col lg:flex-row justify-between lg:items-center border-b border-gray-100 pb-5 gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-sc-900 tracking-wide uppercase">👑 品牌达人合规资源库 (公共盘同步)</h3>
-                        <p class="text-xs text-gray-400 mt-1 select-none">
-                            当前归档日期追踪基准：<span class="font-bold text-sc-900 font-mono" id="current-date-span">2026-06-05</span>
-                        </p>
-                    </div>
-                    
-                    <div class="flex items-center space-x-3">
-                        <!-- 一键导出高品质 Excel (CSV) -->
-                        <button onclick="exportLibraryToExcel()" class="text-xs bg-sc-950 text-white hover:bg-gold-500 hover:text-sc-950 border border-gold-500/20 px-4 py-2.5 rounded-lg transition-all font-bold flex items-center shadow-md">
-                            <i class="fa-solid fa-file-excel mr-1.5 text-green-500 text-sm"></i> 📥 一键导出 Excel 
-                        </button>
-
-                        <button onclick="clearDatabaseWithPassword()" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 border border-red-200 px-3 py-2.5 rounded-lg transition-all font-semibold flex items-center">
-                            <i class="fa-solid fa-trash-can mr-1.5"></i>清空资源库
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 搜索与筛选面板 -->
-                <div class="bg-gray-50/70 p-5 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="relative text-left">
-                        <label class="block text-xs font-bold text-gray-500 mb-1.5">多标签叠加式检索达人姓名 (支持自动匹配下拉推荐)</label>
-                        <div class="bg-white border border-gray-300 rounded-lg p-1.5 flex flex-wrap items-center gap-1.5 min-h-[42px] focus-within:ring-1 focus-within:ring-gold-500 focus-within:border-gold-500">
-                            <!-- 存放渲染生成的标签 -->
-                            <div id="search-tags-container" class="flex flex-wrap gap-1.5"></div>
-                            
-                            <div class="flex-grow flex items-center relative">
-                                <input type="text" id="search-kol-input" oninput="handleSearchInput(this.value)" onkeydown="handleSearchInputKeyDown(event)" placeholder="输入达人姓名检索..." class="w-full text-sc-900 text-xs font-medium focus:outline-none bg-transparent py-1">
-                                <button onclick="addSearchTagFromInput()" class="text-[10px] bg-sc-950 text-white hover:bg-gold-500 hover:text-sc-950 px-2.5 py-1 rounded font-bold transition-all ml-1 flex-shrink-0">确定</button>
-                            </div>
-                        </div>
-
-                        <!-- 智能搜索联想下拉框 -->
-                        <div id="search-autocomplete-dropdown" class="hidden absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-gray-100">
-                            <!-- 动态加载匹配条目 -->
-                        </div>
-                    </div>
-
-                    <div class="text-left">
-                        <label class="block text-xs font-bold text-gray-500 mb-1.5">筛选安全状态</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                <i class="fa-solid fa-shield-halved text-xs"></i>
+        <main>
+            <section class="hero" aria-labelledby="pageTitle">
+                <div class="hero-copy">
+                    <h1 class="hero-title reveal" id="pageTitle" style="--delay: 90ms">
+                        <span>BUYCOOR</span>
+                        <span>Tool Center</span>
+                    </h1>
+                    <p class="hero-badge reveal" style="--delay: 180ms">内容智能工具汇集</p>
+                    <div class="hero-actions reveal" style="--delay: 360ms">
+                        <nav class="nav hero-nav" aria-label="工具分类">
+                            <button class="nav-button is-active" type="button" data-filter="all">全部工具</button>
+                            <button class="nav-button" type="button" data-filter="设计">设计</button>
+                            <span class="nav-group" data-promo-group>
+                                <button class="nav-button" type="button" data-filter="推广" data-has-submenu="true" aria-expanded="false" aria-controls="promoSubmenu">推广</button>
+                                <span class="promo-menu" id="promoSubmenu" role="menu" aria-label="推广子分类" aria-hidden="true">
+                                    <button class="promo-sub-button" type="button" data-promo-sub="TM" role="menuitem">TM</button>
+                                    <button class="promo-sub-button" type="button" data-promo-sub="JD" role="menuitem">JD</button>
+                                    <button class="promo-sub-button" type="button" data-promo-sub="DY" role="menuitem">DY</button>
+                                    <button class="promo-sub-button" type="button" data-promo-sub="RTB" role="menuitem">RTB</button>
+                                </span>
                             </span>
-                            <select id="filter-status" onchange="renderDatabaseTable()" class="pl-9 bg-white border border-gray-300 text-sc-900 text-xs rounded-lg focus:ring-1 focus:ring-gold-500 focus:border-gold-500 block w-full p-2.5 font-medium h-[42px]">
-                                <option value="ALL">显示全部到期状态</option>
-                                <option value="SAFE">🟢 授权中 (安全)</option>
-                                <option value="WARNING">🟡 即将到期 (剩30天内)</option>
-                                <option value="EXPIRED">🔴 已过期 (禁止使用)</option>
-                                <option value="INCOMPLETE">🟠 视频不全 (催补中)</option>
-                            </select>
-                        </div>
+                            <button class="nav-button" type="button" data-filter="内容">内容</button>
+                            <button class="nav-button" type="button" data-filter="Photoshop脚本">Photoshop脚本</button>
+                        </nav>
                     </div>
                 </div>
 
-                <!-- 仿 Excel 产品分 Sheet 页签导航 -->
-                <div class="border-b border-gray-200 select-none">
-                    <ul class="flex flex-wrap -mb-px text-xs font-bold text-center" id="sheet-tabs" role="tablist">
-                        <li class="mr-1" role="presentation">
-                            <button class="inline-block p-4 border-b-2 rounded-t-lg transition-all sc-active-tab font-bold" id="tab-all" onclick="switchSheet('ALL')">
-                                <i class="fa-solid fa-table mr-1.5 text-[10px]"></i>全部产品 (总表)
-                            </button>
-                        </li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-age-cream" onclick="switchSheet('AGE面霜')">AGE面霜</button></li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-ptiox" onclick="switchSheet('PTIOX精华')">PTIOX精华</button></li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-age-family" onclick="switchSheet('AGE家族')">AGE家族</button></li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-age-essence" onclick="switchSheet('AGE精华')">AGE精华</button></li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-umbrella" onclick="switchSheet('银伞防晒')">银伞防晒</button></li>
-                        <li class="mr-1" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300" id="tab-color-essence" onclick="switchSheet('色修精华')">色修精华</button></li>
-                    </ul>
+                <div class="signal-panel reveal" style="--delay: 220ms" aria-hidden="true">
+                    <div class="metric-stack">
+                        <div class="metric-row">
+                            <span class="metric-icon"><i data-lucide="scan-line"></i></span>
+                            <span>
+                                <strong class="metric-title">快速替换</strong>
+                                <span class="metric-copy">从素材到成品的批量更新入口</span>
+                            </span>
+                            <span class="metric-value">Design</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-icon"><i data-lucide="layers-3"></i></span>
+                            <span>
+                                <strong class="metric-title">拼稿协同</strong>
+                                <span class="metric-copy">统一版式、节点和脚本资产</span>
+                            </span>
+                            <span class="metric-value">Script</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-icon"><i data-lucide="chart-no-axes-combined"></i></span>
+                            <span>
+                                <strong class="metric-title">内容复盘</strong>
+                                <span class="metric-copy">达人管理与 AI 周报连接复用</span>
+                            </span>
+                            <span class="metric-value">Growth</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="tool-section" id="tools" aria-labelledby="toolsTitle">
+                <div class="section-head reveal">
+                    <h2 id="toolsTitle">工具矩阵</h2>
+                    <p>默认展示首页核心工具，点击顶部栏目可按使用场景快速聚焦。</p>
                 </div>
 
-                <!-- 达人库表格 -->
-                <div class="overflow-x-auto border border-gray-100 rounded-xl">
-                    <table class="min-w-full divide-y divide-gray-200 text-xs">
-                        <thead class="bg-sc-950 text-white uppercase tracking-wider">
-                            <tr>
-                                <th class="px-6 py-4 text-left font-semibold">纯达人姓名</th>
-                                <th class="px-6 py-4 text-center font-semibold">推广产品 (Sheet)</th>
-                                <th class="px-6 py-4 text-center font-semibold">归档留档日期</th>
-                                <th class="px-6 py-4 text-center font-semibold">留存操作人</th>
-                                <th class="px-6 py-4 text-center font-semibold">授权到期日</th>
-                                <th class="px-6 py-4 text-center font-semibold">追踪状态与警报</th>
-                                <th class="px-6 py-4 text-center font-semibold">纯净版视频</th>
-                                <th class="px-6 py-4 text-center font-semibold">发布版成片</th>
-                                <th class="px-6 py-4 text-center font-semibold">已存盘授权书</th>
-                                <th class="px-6 py-4 text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="db-table-body" class="divide-y divide-gray-200">
-                            <!-- 动态载入 -->
-                        </tbody>
-                    </table>
+                <div class="tool-grid" id="toolGrid">
+                    <article class="tool-card feature reveal" data-category="设计" data-tool="产品光影工具" style="--delay: 40ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="sun-medium"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>产品光影工具</h3>
+                            <p class="card-copy">面向产品视觉精修，快速调整光影层次、主体质感与画面氛围。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-nav-groups="Photoshop脚本" data-tool="拼稿工具" style="--delay: 110ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="panel-top"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>拼稿工具</h3>
+                            <p class="card-copy">把常用拼稿流程收进脚本化入口，减少重复操作。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-tool="项目节点工具" style="--delay: 180ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="milestone"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>项目节点工具</h3>
+                            <p class="card-copy">清晰跟进内容项目节点，帮助团队对齐任务状态。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-tool="繁简字体检测" style="--delay: 250ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="languages"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>繁简字体检测</h3>
+                            <p class="card-copy">快速识别素材中的繁体、简体与字体混用风险，辅助上线前校对。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-tool="路径互换" data-href="path-converter.html" style="--delay: 320ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="shuffle"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>路径互换</h3>
+                            <p class="card-copy">在 Mac SMB 与 Windows 共享盘路径之间互转，减少跨设备协作时的手动修正。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-tool="图片自动分类" style="--delay: 390ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="folder-tree"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>图片自动分类</h3>
+                            <p class="card-copy">按项目、产品或素材类型自动归档图片，让素材库更快进入可检索状态。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="设计" data-tool="图片登记Excel表" style="--delay: 460ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="file-spreadsheet"></i></span>
+                            <p class="card-category">设计</p>
+                            <h3>图片登记Excel表</h3>
+                            <p class="card-copy">将图片信息整理成 Excel 登记表，方便团队追踪、复核与交接。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card reveal" data-category="内容" data-nav-groups="推广" data-tool="达人管理库" data-href="legacy-kol-portal.html" style="--delay: 530ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="users-round"></i></span>
+                            <p class="card-category">内容</p>
+                            <h3>达人管理库</h3>
+                            <p class="card-copy">沉淀达人资料、授权文件和推广素材，支持团队统一检索。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
+
+                    <article class="tool-card feature reveal" data-category="内容" data-tool="AI周报" data-href="AI周报.html" style="--delay: 600ms">
+                        <div class="card-top">
+                            <span class="card-icon"><i data-lucide="newspaper"></i></span>
+                            <p class="card-category">内容</p>
+                            <h3>AI周报</h3>
+                            <p class="card-copy">把一周内容进展、AI 动态和团队动作整理成可读、可复用的周报结构。</p>
+                        </div>
+                        <div class="card-bottom">
+                            <span class="card-link">
+                                <span>点击使用</span>
+                                <i data-lucide="arrow-up-right"></i>
+                            </span>
+                        </div>
+                    </article>
                 </div>
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- ==================== 悬浮预览组件 ==================== -->
-    <div id="hover-media-card" class="hidden fixed bg-sc-950 text-gray-200 p-4 rounded-xl shadow-2xl border border-gold-500/40 text-xs w-[320px] z-50 pointer-events-none preview-tooltip flex flex-col space-y-3">
-        <div class="font-bold text-gold-500 border-b border-gray-800 pb-2 flex items-center justify-between">
-            <span class="flex items-center"><i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-xs text-gold-500"></i>修丽可合规沙盒预览</span>
-            <span id="preview-type-badge" class="px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-gold-100 text-gold-600">PREVIEW</span>
-        </div>
-        <div id="preview-media-container" class="w-full h-[180px] bg-sc-900 rounded-lg flex items-center justify-center overflow-hidden border border-gray-800">
-            <!-- 动态渲染 -->
-        </div>
-        <div class="space-y-1">
-            <p id="preview-filename" class="font-bold text-white break-all text-xs line-clamp-1"></p>
-            <p id="preview-filesize" class="text-[10px] text-gray-400 font-mono"></p>
-            <p id="preview-filepath" class="text-[9px] text-gray-500 break-all font-mono leading-relaxed truncate"></p>
-            <p id="preview-action-hint" class="text-[9px] text-gold-500 font-bold italic"></p>
-        </div>
+            </section>
+        </main>
     </div>
 
-    <!-- ==================== 高清大图合规核验沙盒弹窗 ==================== -->
-    <div id="large-preview-modal" class="hidden fixed inset-0 bg-sc-950/95 z-[100] flex items-center justify-center p-6 animate-fade">
-        <div class="bg-sc-900 border border-gold-500/30 rounded-2xl max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
-            
-            <div class="px-6 py-4 bg-sc-950 border-b border-gray-800 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <span class="p-2 bg-gold-50 rounded-lg text-gold-500">
-                        <i class="fa-solid fa-file-contract text-lg"></i>
-                    </span>
-                    <div>
-                        <h4 id="modal-title" class="text-sm font-bold text-white flex items-center">
-                            授权合同高清晰度核验
-                        </h4>
-                        <p id="modal-subtitle" class="text-[10px] text-gray-400 mt-0.5 font-mono"></p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                    <button id="btn-modal-download" class="text-xs bg-gold-500 hover:bg-gold-600 text-sc-950 px-4 py-2 rounded-lg font-bold flex items-center space-x-1.5 transition-all">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> <span>极速保存至本地</span>
-                    </button>
-                    <button onclick="closeLargePreview()" class="text-gray-400 hover:text-white hover:bg-sc-800 p-2 rounded-full transition-all">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 大图展示区 -->
-            <div class="flex-grow bg-sc-950 p-6 flex items-center justify-center overflow-auto relative">
-                <div class="max-w-full max-h-full flex items-center justify-center" id="modal-canvas-container">
-                    <img id="modal-img" src="" class="max-w-full max-h-[70vh] object-contain rounded border border-gray-800 shadow-2xl transition-transform" />
-                </div>
-            </div>
-            
-            <div class="bg-sc-950 py-3 px-6 text-center text-[10px] text-gray-500 border-t border-gray-800">
-                修丽可品牌合规专属阅档通道 - 严禁外传与截图
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== [NEW] 手动逐帧纠偏截取达人封面弹窗 ==================== -->
-    <div id="manual-crop-modal" class="hidden fixed inset-0 bg-sc-950/95 z-[110] flex items-center justify-center p-6 animate-fade">
-        <div class="bg-sc-900 border border-gold-500/30 rounded-2xl max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
-            <div class="px-6 py-4 bg-sc-950 border-b border-gray-800 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <span class="p-2.5 bg-gold-100 rounded-lg text-gold-600">
-                        <i class="fa-solid fa-scissors text-lg"></i>
-                    </span>
-                    <div>
-                        <h4 class="text-sm font-bold text-white">修丽可视频画面手动微调纠偏</h4>
-                        <p class="text-[10px] text-gray-400 mt-0.5">请拖动进度条，精确锁定并截取达人露脸帧作为头像</p>
-                    </div>
-                </div>
-                <button onclick="closeManualCropModal()" class="text-gray-400 hover:text-white hover:bg-sc-800 p-2 rounded-full transition-all">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            
-            <div class="flex-grow p-6 flex flex-col md:flex-row gap-6 overflow-y-auto select-none">
-                <!-- 左侧：大视频工作区 -->
-                <div class="flex-grow flex flex-col space-y-4">
-                    <div class="relative bg-black rounded-xl aspect-video flex items-center justify-center overflow-hidden border border-gray-800 shadow-inner">
-                        <video id="crop-video" class="max-w-full max-h-full" muted playsinline></video>
-                    </div>
-                    
-                    <div class="bg-sc-950 p-4 rounded-xl border border-gray-800 space-y-3">
-                        <div class="flex justify-between items-center text-xs font-mono text-gray-400">
-                            <span id="crop-time-current" class="text-gold-500 font-bold">00:00.00</span>
-                            <span id="crop-time-duration">00:00.00</span>
-                        </div>
-                        <!-- 时间轴拉条 -->
-                        <input type="range" id="crop-video-slider" class="w-full accent-gold-500 bg-gray-800 h-1.5 rounded-lg appearance-none cursor-pointer" min="0" step="0.01" value="0">
-                        
-                        <!-- 控制台 -->
-                        <div class="flex justify-center items-center space-x-3 pt-2">
-                            <button onclick="stepCropVideoFrame(-1)" class="bg-sc-800 hover:bg-gold-500 hover:text-sc-950 text-white text-xs px-3 py-1.5 rounded-lg transition-all font-semibold" title="后退1秒">
-                                <i class="fa-solid fa-backward"></i> -1s
-                            </button>
-                            <button onclick="stepCropVideoFrame(-0.04)" class="bg-sc-800 hover:bg-gold-500 hover:text-sc-950 text-white text-xs px-3 py-1.5 rounded-lg transition-all font-semibold" title="后退一帧">
-                                <i class="fa-solid fa-chevron-left"></i> 上一帧
-                            </button>
-                            <button onclick="toggleCropVideoPlay()" class="bg-gold-500 hover:bg-gold-600 text-sc-950 text-xs px-6 py-2 rounded-lg font-extrabold flex items-center space-x-1.5 shadow transition-all">
-                                <i id="crop-play-icon" class="fa-solid fa-play"></i> <span id="crop-play-text">播放</span>
-                            </button>
-                            <button onclick="stepCropVideoFrame(0.04)" class="bg-sc-800 hover:bg-gold-500 hover:text-sc-950 text-white text-xs px-3 py-1.5 rounded-lg transition-all font-semibold" title="前进一帧">
-                                下一帧 <i class="fa-solid fa-chevron-right"></i>
-                            </button>
-                            <button onclick="stepCropVideoFrame(1)" class="bg-sc-800 hover:bg-gold-500 hover:text-sc-950 text-white text-xs px-3 py-1.5 rounded-lg transition-all font-semibold" title="前进1秒">
-                                +1s <i class="fa-solid fa-forward"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 右侧：圆形头像裁切画廊预览 -->
-                <div class="w-full md:w-[220px] flex flex-col justify-between items-center border-t md:border-t-0 md:border-l border-gray-800 pt-6 md:pt-0 md:pl-6">
-                    <div class="text-center space-y-4 w-full">
-                        <span class="text-[10px] text-gray-400 block uppercase font-bold tracking-wider">实时圆形头像预览</span>
-                        <div class="flex justify-center">
-                            <div class="w-36 h-32 rounded-full border-2 border-gold-500 p-1 bg-sc-950 flex items-center justify-center shadow-lg">
-                                <canvas id="crop-preview-canvas" width="150" height="150" class="w-28 h-28 rounded-full object-cover"></canvas>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-gray-500 leading-relaxed text-left bg-sc-950/60 p-3 rounded-lg border border-gray-800/80">
-                            💡 **微调技巧**：点击播放或拖动进度条，可在人脸完整清晰露出时暂停。再使用“上一帧/下一帧”微调面部表情，即可完美固化头像。
-                        </p>
-                    </div>
-                    
-                    <button onclick="confirmManualCrop()" class="w-full mt-6 bg-gold-500 hover:bg-gold-600 text-sc-950 text-xs font-extrabold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-circle-check text-sm"></i>
-                        <span>确定截取并落盘</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 离屏渲染管道（100%前端秒级无网适配抽帧） -->
-    <video id="offscreen-video" class="hidden" muted playsinline crossorigin="anonymous"></video>
-    <canvas id="offscreen-canvas" class="hidden"></canvas>
-    <canvas id="pdf-render-canvas" class="hidden"></canvas>
-
-    <footer class="bg-sc-950 text-gray-500 py-6 text-center text-[10px] tracking-wider border-t border-gray-900 mt-auto">
-        <p>© 2026 SkinCeuticals L'Oréal Luxe China. All Rights Reserved. - For Internal Use Only</p>
-    </footer>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script>
-        const TODAY = new Date("2026-06-05");
-        const TODAY_STR = TODAY.toISOString().split('T')[0];
-        document.getElementById('current-date-span').innerText = TODAY_STR;
+        const canvas = document.getElementById("particleCanvas");
+        const ctx = canvas.getContext("2d");
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        let width = 0;
+        let height = 0;
+        let particles = [];
+        let pointer = { x: 0, y: 0, active: false };
+        let focusMode = false;
 
-        const folderInput = document.getElementById('folder-input');
-        const zipInput = document.getElementById('zip-input');
-        const uploadStatusText = document.getElementById('upload-status-text');
-        const statusContainer = document.getElementById('status-container');
-        const uploadTableBody = document.getElementById('upload-table-body');
-        const dbTableBody = document.getElementById('db-table-body');
-        const btnBatchSave = document.getElementById('btn-batch-save');
-        const btnConnectDir = document.getElementById('btn-connect-dir');
-        const connectStatus = document.getElementById('connect-status');
-        const btnSelectFolder = document.getElementById('btn-select-folder');
-        const btnSelectZip = document.getElementById('btn-select-zip');
-        const hoverMediaCard = document.getElementById('hover-media-card');
-        const previewMediaContainer = document.getElementById('preview-media-container');
-
-        // 看板 DOM
-        const importSummaryCard = document.getElementById('import-summary-card');
-        const summaryScanCount = document.getElementById('summary-scan-count');
-        const summaryReadyCount = document.getElementById('summary-ready-count');
-        const summaryPendingCount = document.getElementById('summary-pending-count');
-        const summaryArchivedCount = document.getElementById('summary-archived-count');
-
-        // 大图查看 DOM 绑定
-        const largePreviewModal = document.getElementById('large-preview-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalSubtitle = document.getElementById('modal-subtitle');
-        const modalImg = document.getElementById('modal-img');
-        const btnModalDownload = document.getElementById('btn-modal-download');
-
-        let tempParsedKols = {}; // 暂存文件夹解析结果
-        let currentActiveSheet = 'ALL'; // 默认 Sheet
-        let dbHandle = null; // 公共盘文件写入流句柄
-        let sharedDatabase = []; // 公共盘数据库内容
-
-        let fileRegistry = []; // 内存真实 file 句柄
-        let objectUrlMap = new Map(); // 缓存 url
-        let hoveredRegistryIndex = null; // 悬浮 index
-        let pdfCacheMap = new Map(); // PDF 缓存
-
-        // 手动纠偏裁剪全局控制状态
-        let currentCropKolName = null;
-        let currentCropDbIndex = null;
-        let cropVideoBlobUrl = null;
-
-        // ==================== 高性能并行/串行自适应解码器 (10x 速度提升) ====================
-        let videoDecodeQueue = []; 
-        let isDecoderRunning = false; 
-
-        // 离屏渲染轻量级专用 DOM 池（避免频繁销毁创建）
-        const decodeVideoPool = document.createElement('video');
-        decodeVideoPool.muted = true;
-        decodeVideoPool.playsInline = true;
-        decodeVideoPool.preload = "auto";
-        decodeVideoPool.style.display = "none";
-        document.body.appendChild(decodeVideoPool);
-
-        const decodeCanvasPool = document.createElement('canvas');
-        decodeCanvasPool.width = 160; // 限制宽度减少GPU渲染开销
-        decodeCanvasPool.height = 160;
-        const decodeCtxPool = decodeCanvasPool.getContext('2d', { willReadFrequently: true }); // 激活浏览器底层像素缓存
-
-        async function registerVideoToQueue(file, onDone) {
-            videoDecodeQueue.push({ file, onDone });
-            triggerQueueProcess();
+        function resizeCanvas() {
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = Math.floor(width * ratio);
+            canvas.height = Math.floor(height * ratio);
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            seedParticles();
         }
 
-        async function triggerQueueProcess() {
-            if (isDecoderRunning || videoDecodeQueue.length === 0) return;
-            isDecoderRunning = true;
+        function seedParticles() {
+            const count = reduceMotion ? 20 : Math.min(84, Math.max(42, Math.floor(width * height / 21000)));
+            particles = Array.from({ length: count }, (_, index) => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.18,
+                vy: (Math.random() - 0.5) * 0.16,
+                r: Math.random() * 1.8 + 0.7,
+                alpha: Math.random() * 0.42 + 0.28,
+                phase: index * 0.37
+            }));
+        }
 
-            const currentJob = videoDecodeQueue.shift();
-            try {
-                // 利用 Promise 与微任务机制，保证在渲染空闲期执行解码
-                await new Promise(resolve => requestAnimationFrame(resolve));
-                await processVideoDecodingJobOptimized(currentJob.file, currentJob.onDone);
-            } catch (err) {
-                console.error("队列中视频解码错误: ", err);
-                currentJob.onDone(null);
-            } finally {
-                isDecoderRunning = false;
-                // 留出 20ms 给浏览器主线程重绘 UI，彻底消除卡顿
-                setTimeout(triggerQueueProcess, 20);
+        function drawParticles(time = 0) {
+            ctx.clearRect(0, 0, width, height);
+            const connectionRange = focusMode ? 94 : 128;
+            const alphaScale = focusMode ? 0.48 : 1;
+
+            particles.forEach((p) => {
+                if (!reduceMotion) {
+                    p.x += p.vx + Math.sin(time * 0.00045 + p.phase) * 0.025;
+                    p.y += p.vy + Math.cos(time * 0.00038 + p.phase) * 0.018;
+                }
+
+                if (p.x < -20) p.x = width + 20;
+                if (p.x > width + 20) p.x = -20;
+                if (p.y < -20) p.y = height + 20;
+                if (p.y > height + 20) p.y = -20;
+
+                if (pointer.active && !reduceMotion) {
+                    const dx = p.x - pointer.x;
+                    const dy = p.y - pointer.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 160) {
+                        p.x += dx * 0.0009;
+                        p.y += dy * 0.0009;
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = `rgba(215, 231, 232, ${p.alpha * alphaScale * 0.55})`;
+                ctx.fillStyle = `rgba(226, 245, 248, ${p.alpha * alphaScale})`;
+                ctx.fill();
+            });
+
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < particles.length; i += 1) {
+                for (let j = i + 1; j < particles.length; j += 1) {
+                    const a = particles[i];
+                    const b = particles[j];
+                    const dx = a.x - b.x;
+                    const dy = a.y - b.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < connectionRange) {
+                        const opacity = (1 - distance / connectionRange) * 0.22 * alphaScale;
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle = `rgba(170, 218, 226, ${opacity})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            if (!reduceMotion) {
+                requestAnimationFrame(drawParticles);
             }
         }
 
-        // ==================== 高性能自动分拣智能抽帧处理器 ====================
-        function processVideoDecodingJobOptimized(file, onFaceCaptured) {
-            return new Promise((resolveJob) => {
-                const fileUrl = URL.createObjectURL(file);
-                decodeVideoPool.src = fileUrl;
-                decodeVideoPool.load();
+        resizeCanvas();
+        drawParticles();
+        window.addEventListener("resize", resizeCanvas);
+        window.addEventListener("pointermove", (event) => {
+            pointer = { x: event.clientX, y: event.clientY, active: true };
+        });
+        window.addEventListener("pointerleave", () => {
+            pointer.active = false;
+        });
 
-                const captureFrameAtTime = (time) => {
-                    return new Promise((resolveFrame) => {
-                        decodeVideoPool.currentTime = time;
-                        
-                        const onSeeked = () => {
-                            decodeVideoPool.removeEventListener('seeked', onSeeked);
-                            
-                            // 1. 高速等比微缩绘制，直接在显存阶段压缩尺寸
-                            const vw = decodeVideoPool.videoWidth || 640;
-                            const vh = decodeVideoPool.videoHeight || 360;
-                            const size = Math.min(vw, vh);
-                            const sx = (vw - size) / 2;
-                            const sy = (vh - size) / 2;
-
-                            decodeCtxPool.clearRect(0, 0, 160, 160);
-                            decodeCtxPool.drawImage(decodeVideoPool, sx, sy, size, size, 0, 0, 160, 160);
-                            
-                            try {
-                                // 2. 超高速格点抽样算法 (仅分析约 1.5% 关键像素点，速度提升 10倍)
-                                const imgData = decodeCtxPool.getImageData(0, 0, 160, 160).data;
-                                let sum = 0, sqSum = 0;
-                                const sampleStep = 24; // 跨步采样
-                                let sampleCount = 0;
-                                
-                                for (let i = 0; i < imgData.length; i += sampleStep) {
-                                    const r = imgData[i];
-                                    const g = imgData[i+1];
-                                    const b = imgData[i+2];
-                                    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                                    sum += gray;
-                                    sqSum += gray * gray;
-                                    sampleCount++;
-                                }
-                                
-                                const mean = sum / sampleCount;
-                                const variance = (sqSum / sampleCount) - (mean * mean);
-                                const stdDev = Math.sqrt(Math.max(0, variance));
-
-                                // 过滤纯黑屏(mean < 35)、暴光过载(mean > 220)以及无对比度画面(stdDev < 12)
-                                const isValid = (mean > 35 && mean < 220 && stdDev > 12);
-
-                                resolveFrame({
-                                    base64: isValid ? decodeCanvasPool.toDataURL('image/jpeg', 0.75) : null,
-                                    score: stdDev,
-                                    isValid: isValid
-                                });
-                            } catch (e) {
-                                resolveFrame({
-                                    base64: decodeCanvasPool.toDataURL('image/jpeg', 0.7),
-                                    score: 0,
-                                    isValid: true
-                                });
-                            }
-                        };
-                        decodeVideoPool.addEventListener('seeked', onSeeked);
-                    });
-                };
-
-                decodeVideoPool.onloadedmetadata = async () => {
-                    const duration = decodeVideoPool.duration || 5;
-                    const candidates = [];
-                    // 分别在 15%、45%、75% 进度处设置嗅探锚点，避开片头黑屏及片尾赞助商LOGO
-                    const checkOffsets = [
-                        Math.min(1.5, duration * 0.15), 
-                        duration * 0.45, 
-                        Math.min(duration - 1, duration * 0.75)
-                    ];
-                    
-                    for (let offset of checkOffsets) {
-                        const result = await captureFrameAtTime(offset);
-                        if (result && result.isValid) {
-                            candidates.push(result);
-                        }
-                    }
-
-                    // 选取对比度标准差最高（说明图像细节和人脸边缘最丰富）的一帧
-                    const chosen = candidates.length > 0 
-                        ? candidates.sort((a, b) => b.score - a.score)[0] 
-                        : null;
-
-                    if (chosen && chosen.base64) {
-                        // 3. 高性能前端裁切圆形蒙版管道
-                        const roundCanvas = document.createElement('canvas');
-                        roundCanvas.width = 150;
-                        roundCanvas.height = 150;
-                        const rCtx = roundCanvas.getContext('2d');
-                        
-                        rCtx.beginPath();
-                        rCtx.arc(75, 75, 75, 0, Math.PI * 2, true);
-                        rCtx.closePath();
-                        rCtx.clip();
-
-                        const img = new Image();
-                        img.onload = () => {
-                            rCtx.drawImage(img, 0, 0, 150, 150);
-                            const roundedBase64 = roundCanvas.toDataURL('image/jpeg', 0.85);
-                            onFaceCaptured(roundedBase64);
-                            
-                            roundCanvas.remove();
-                            URL.revokeObjectURL(fileUrl);
-                            resolveJob(); 
-                        };
-                        img.src = chosen.base64;
-                    } else {
-                        // 回退保障方案：如果嗅探失败，直接取 1.0 秒的原始画面
-                        const fallback = await captureFrameAtTime(Math.min(1.0, duration));
-                        onFaceCaptured(fallback ? fallback.base64 : null);
-                        URL.revokeObjectURL(fileUrl);
-                        resolveJob();
-                    }
-                };
-
-                decodeVideoPool.onerror = () => {
-                    onFaceCaptured(null);
-                    URL.revokeObjectURL(fileUrl);
-                    resolveJob();
-                };
-            });
+        function revealItem(item) {
+            if (item.classList.contains("is-visible")) return;
+            item.classList.add("is-visible");
+            window.setTimeout(() => item.classList.add("is-settled"), 1400);
         }
 
-        // 启动手动纠偏画幅裁剪弹窗
-        function retriggerDeepScan(kolOriginalName, dbIndex = null) {
-            let kol = null;
-            let videoFile = null;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    revealItem(entry.target);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.16 });
 
-            if (dbIndex !== null) {
-                // 情况 A：对【已归档合规库】达人进行画幅手动截取
-                kol = sharedDatabase[dbIndex];
-                if (!kol) return;
+        document.querySelectorAll(".reveal").forEach((item) => observer.observe(item));
 
-                // 优先在内存加载的文件列表中检索相对路径吻合的文件句柄
-                const matchedFile = fileRegistry.find(f => {
-                    const path = f.webkitRelativePath || f.name;
-                    return path === kol.pureVideoPath || path === kol.postedVideoPath;
-                });
-                
-                if (matchedFile) {
-                    videoFile = matchedFile;
-                } else {
-                    alert(`💡 智能重定位提示：\n手动调取视频帧需要解码本地大文件，请在“素材分拣”页面重新上传加载该达人的原始文件夹（或ZIP包）后再执行操作！`);
+        requestAnimationFrame(() => {
+            document.querySelectorAll(".reveal").forEach((item) => {
+                const box = item.getBoundingClientRect();
+                if (box.top < window.innerHeight * 1.12) {
+                    revealItem(item);
+                }
+            });
+        });
+
+        const navButtons = document.querySelectorAll("[data-filter]");
+        const promoGroup = document.querySelector("[data-promo-group]");
+        const promoButton = document.querySelector("[data-has-submenu]");
+        const promoMenu = document.getElementById("promoSubmenu");
+        const promoSubButtons = document.querySelectorAll("[data-promo-sub]");
+        const cards = document.querySelectorAll(".tool-card");
+        const toolsSection = document.getElementById("tools");
+
+        function setPromoMenu(open) {
+            if (!promoGroup || !promoButton) return;
+            promoGroup.classList.toggle("is-open", open);
+            promoMenu?.classList.toggle("is-open", open);
+            promoButton.setAttribute("aria-expanded", String(open));
+            promoMenu?.setAttribute("aria-hidden", String(!open));
+        }
+
+        function clearPromoSubActive() {
+            promoSubButtons.forEach((button) => button.classList.remove("is-active"));
+        }
+
+        function cardMatchesFilter(card, filter) {
+            if (filter === "all") return true;
+            const groups = (card.dataset.navGroups || "")
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean);
+            return card.dataset.category === filter || groups.includes(filter);
+        }
+
+        function activateToolCard(card) {
+            const href = card.dataset.href;
+            const tool = card.dataset.tool || card.querySelector("h3")?.textContent?.trim();
+            if (href) {
+                window.location.href = href;
+                return;
+            }
+            if (tool) {
+                showToast(`${tool}正在接入，当前首页已预留入口。`);
+            }
+        }
+
+        cards.forEach((card) => {
+            card.addEventListener("pointerenter", () => card.classList.add("is-hovered"));
+            card.addEventListener("pointerleave", () => card.classList.remove("is-hovered"));
+            const tool = card.dataset.tool || card.querySelector("h3")?.textContent?.trim();
+            card.tabIndex = 0;
+            card.setAttribute("role", card.dataset.href ? "link" : "button");
+            card.setAttribute("aria-label", `${tool}，点击使用`);
+            card.addEventListener("click", () => activateToolCard(card));
+            card.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    activateToolCard(card);
+                }
+            });
+        });
+
+        function applyFilter(filter, shouldScroll = true) {
+            document.querySelectorAll(".nav-button").forEach((button) => {
+                button.classList.toggle("is-active", button.dataset.filter === filter);
+            });
+
+            if (filter !== "推广") {
+                setPromoMenu(false);
+                clearPromoSubActive();
+            }
+
+            cards.forEach((card) => {
+                const isMatch = cardMatchesFilter(card, filter);
+                card.classList.toggle("is-hidden", !isMatch);
+            });
+
+            if (shouldScroll) {
+                toolsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+
+        navButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (button.dataset.hasSubmenu === "true") {
+                    const shouldOpen = !promoGroup?.classList.contains("is-open");
+                    applyFilter(button.dataset.filter, false);
+                    setPromoMenu(shouldOpen);
                     return;
                 }
-            } else {
-                // 情况 B：对【当前分拣列表中】的临时达人执行纠偏
-                kol = tempParsedKols[kolOriginalName];
-                if (!kol || kol.allVideos.length === 0) return;
-                videoFile = fileRegistry[kol.allVideos[0].registryIndex];
-            }
 
-            if (!videoFile) {
-                alert("❌ 未找到对应的视频文件，无法执行纠偏。");
-                return;
-            }
-
-            currentCropKolName = kolOriginalName;
-            currentCropDbIndex = dbIndex;
-
-            const mModal = document.getElementById('manual-crop-modal');
-            const mVideo = document.getElementById('crop-video');
-            const mSlider = document.getElementById('crop-video-slider');
-
-            // 创建 Blob URL 注入视频播放器
-            cropVideoBlobUrl = URL.createObjectURL(videoFile);
-            mVideo.src = cropVideoBlobUrl;
-            mVideo.load();
-
-            mVideo.onloadedmetadata = () => {
-                mSlider.max = mVideo.duration;
-                mSlider.value = 0.5; // 默认停留在0.5s避开全黑开头
-                mVideo.currentTime = 0.5;
-                document.getElementById('crop-time-duration').innerText = formatCropTime(mVideo.duration);
-                updateManualCropPreview();
-            };
-
-            mVideo.ontimeupdate = () => {
-                mSlider.value = mVideo.currentTime;
-                document.getElementById('crop-time-current').innerText = formatCropTime(mVideo.currentTime);
-                updateManualCropPreview();
-            };
-
-            // 监听拉条滑动
-            mSlider.oninput = () => {
-                pauseCropVideo();
-                mVideo.currentTime = mSlider.value;
-            };
-
-            mModal.classList.remove('hidden');
-        }
-
-        // 格式化时间码 (分:秒.毫秒)
-        function formatCropTime(secs) {
-            const m = Math.floor(secs / 60).toString().padStart(2, '0');
-            const s = Math.floor(secs % 60).toString().padStart(2, '0');
-            const ms = Math.floor((secs % 1) * 100).toString().padStart(2, '0');
-            return `${m}:${s}.${ms}`;
-        }
-
-        // 实质截屏画幅绘制单元
-        function updateManualCropPreview() {
-            const video = document.getElementById('crop-video');
-            const canvas = document.getElementById('crop-preview-canvas');
-            const ctx = canvas.getContext('2d');
-            if (!video || !canvas) return;
-
-            ctx.save();
-            ctx.clearRect(0, 0, 150, 150);
-            
-            // 裁切为符合圆形头像预览的圆形视口
-            ctx.beginPath();
-            ctx.arc(75, 75, 75, 0, Math.PI * 2, true);
-            ctx.closePath();
-            ctx.clip();
-
-            const vw = video.videoWidth || 640;
-            const vh = video.videoHeight || 360;
-            const size = Math.min(vw, vh);
-            const cx = (vw - size) / 2;
-            const cy = (vh - size) / 2;
-
-            ctx.drawImage(video, cx, cy, size, size, 0, 0, 150, 150);
-            ctx.restore();
-        }
-
-        // 播放与暂停切换
-        function toggleCropVideoPlay() {
-            const video = document.getElementById('crop-video');
-            const icon = document.getElementById('crop-play-icon');
-            const text = document.getElementById('crop-play-text');
-            if (video.paused) {
-                video.play();
-                icon.className = "fa-solid fa-pause";
-                text.innerText = "暂停";
-            } else {
-                video.pause();
-                icon.className = "fa-solid fa-play";
-                text.innerText = "播放";
-            }
-        }
-
-        function pauseCropVideo() {
-            const video = document.getElementById('crop-video');
-            const icon = document.getElementById('crop-play-icon');
-            const text = document.getElementById('crop-play-text');
-            video.pause();
-            icon.className = "fa-solid fa-play";
-            text.innerText = "播放";
-        }
-
-        // 逐帧/秒进退
-        function stepCropVideoFrame(delta) {
-            pauseCropVideo();
-            const video = document.getElementById('crop-video');
-            video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
-        }
-
-        // 关闭手动截屏面板
-        function closeManualCropModal() {
-            document.getElementById('manual-crop-modal').classList.add('hidden');
-            const video = document.getElementById('crop-video');
-            video.pause();
-            video.src = "";
-            if (cropVideoBlobUrl) {
-                URL.revokeObjectURL(cropVideoBlobUrl);
-                cropVideoBlobUrl = null;
-            }
-        }
-
-        // 确认保存手动截屏图片
-        async function confirmManualCrop() {
-            const canvas = document.getElementById('crop-preview-canvas');
-            const base64Face = canvas.toDataURL('image/jpeg', 0.95);
-
-            if (currentCropDbIndex !== null) {
-                // 保存情况 A：资源库固化
-                const kol = sharedDatabase[currentCropDbIndex];
-                kol.coverUrl = base64Face;
-                try {
-                    const writable = await dbHandle.createWritable();
-                    await writable.write(JSON.stringify(sharedDatabase, null, 2));
-                    await writable.close();
-                    renderDatabaseTable();
-                    alert(`✅ 已成功固化并更新达人「${kol.name}」在内网公共盘的头像。`);
-                } catch (err) {
-                    alert("物理写入公共盘文件失败，请确保权限正常: " + err.message);
-                }
-            } else {
-                // 保存情况 B：初审列表暂存
-                const kol = tempParsedKols[currentCropKolName];
-                if (kol) {
-                    kol.coverUrl = base64Face;
-                    renderUploadTable();
-                    alert(`✅ 已成功提取当前帧作为达人「${kol.name}」的归档封面。`);
-                }
-            }
-
-            closeManualCropModal();
-        }
-
-        // 严格的前置操作人校验拦截控制
-        function validateOperatorBeforeAction() {
-            const operator = opNameInput.value.trim();
-            if (operator === "" || operator === "请输入操作人姓名") {
-                alert("❌ 【前置拦截：请填写操作人姓名】\n请先在页面右上角「当前操作人标签」输入框内，填入您的真实姓名！否则无法上传和分拣素材。");
-                opNameInput.focus();
-                opNameInput.classList.add("operator-warn");
-                return false;
-            }
-            opNameInput.classList.remove("operator-warn");
-            return true;
-        }
-
-        // 接管点击上传事件
-        function handleUploadButtonClick(type) {
-            if (!validateOperatorBeforeAction()) return;
-            
-            if (type === 'folder') {
-                folderInput.click();
-            } else if (type === 'zip') {
-                zipInput.click();
-            }
-        }
-
-        // 搜索过滤多标签机制
-        let searchKolTags = []; 
-
-        function handleSearchInputKeyDown(event) {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                addSearchTagFromInput();
-            }
-        }
-
-        function addSearchTagFromInput() {
-            const inputElem = document.getElementById('search-kol-input');
-            const val = inputElem.value.trim();
-            if (val !== "" && !searchKolTags.includes(val)) {
-                searchKolTags.push(val);
-                inputElem.value = "";
-                hideAutocompleteDropdown();
-                renderSearchTags();
-                renderDatabaseTable();
-            }
-        }
-
-        // 移除标签筛选条件
-        function removeSearchTag(index) {
-            searchKolTags.splice(index, 1);
-            renderSearchTags();
-            renderDatabaseTable();
-        }
-
-        // 渲染筛选条件标签卡片
-        function renderSearchTags() {
-            const container = document.getElementById('search-tags-container');
-            container.innerHTML = "";
-            searchKolTags.forEach((tag, idx) => {
-                const tagSpan = document.createElement('div');
-                tagSpan.className = "inline-flex items-center px-2 py-1 rounded bg-gold-100 text-gold-600 border border-gold-500/20 text-xs font-bold select-none animate-fadeIn";
-                tagSpan.innerHTML = `
-                    <span>${tag}</span>
-                    <button onclick="removeSearchTag(${idx})" class="ml-1.5 text-gold-500 hover:text-gold-800 transition-all font-extrabold focus:outline-none">&times;</button>
-                `;
-                container.appendChild(tagSpan);
+                applyFilter(button.dataset.filter);
             });
-        }
+        });
 
-        // 处理筛选输入框联想
-        function handleSearchInput(value) {
-            const dropdown = document.getElementById('search-autocomplete-dropdown');
-            const trimmedVal = value.trim().toLowerCase();
+        promoGroup?.addEventListener("click", (event) => {
+            event.stopPropagation();
+        });
 
-            if (!trimmedVal || !dbHandle || sharedDatabase.length === 0) {
-                hideAutocompleteDropdown();
-                return;
-            }
+        promoSubButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                clearPromoSubActive();
+                button.classList.add("is-active");
+                applyFilter("推广", false);
+                setPromoMenu(true);
+            });
+        });
 
-            const matchedKols = Array.from(new Set(
-                sharedDatabase
-                    .filter(kol => kol.name.toLowerCase().includes(trimmedVal))
-                    .map(kol => kol.name)
-            ));
-
-            dropdown.innerHTML = "";
-            dropdown.classList.remove('hidden');
-
-            if (matchedKols.length === 0) {
-                const noResultItem = document.createElement('div');
-                noResultItem.className = "px-4 py-2 text-xs text-gray-400 italic bg-gray-50 select-none";
-                noResultItem.innerText = "无匹配的达人";
-                dropdown.appendChild(noResultItem);
-            } else {
-                matchedKols.forEach(name => {
-                    const dropdownItem = document.createElement('div');
-                    dropdownItem.className = "px-4 py-2 text-xs text-sc-900 font-bold hover:bg-gold-50 hover:text-gold-600 cursor-pointer transition-all flex justify-between items-center";
-                    dropdownItem.innerHTML = `
-                        <span>${name}</span>
-                        <span class="text-[9px] text-gray-400 font-normal">点击确定过滤</span>
-                    `;
-                    dropdownItem.onclick = () => {
-                        if (!searchKolTags.includes(name)) {
-                            searchKolTags.push(name);
-                            renderSearchTags();
-                            renderDatabaseTable();
-                        }
-                        document.getElementById('search-kol-input').value = "";
-                        hideAutocompleteDropdown();
-                    };
-                    dropdown.appendChild(dropdownItem);
-                });
-            }
-        }
-
-        function hideAutocompleteDropdown() {
-            const dropdown = document.getElementById('search-autocomplete-dropdown');
-            dropdown.classList.add('hidden');
-            dropdown.innerHTML = "";
-        }
-
-        document.addEventListener('click', function(e) {
-            const searchContainer = document.getElementById('search-kol-input');
-            if (searchContainer && !searchContainer.parentElement.contains(e.target)) {
-                hideAutocompleteDropdown();
+        document.addEventListener("click", (event) => {
+            if (promoGroup && !promoGroup.contains(event.target)) {
+                setPromoMenu(false);
             }
         });
 
-        // 智能情感标签嗅探
-        function detectOpinionTag(rawString) {
-            if (!rawString) return "";
-            if (rawString.includes("好看")) return "好看";
-            if (rawString.includes("还行")) return "还行";
-            if (rawString.includes("一般")) return "一般";
-            return "";
-        }
-
-        // 智能清洗：纯净达人姓名清洗
-        function cleanKOLName(rawString) {
-            if (!rawString) return "";
-            let name = rawString.trim();
-            
-            if (name.includes('/') || name.includes('\\')) {
-                const arr = name.split(/[\/\\]/);
-                name = arr[arr.length - 1] || name;
-            }
-
-            // 彻底抹除授权截止日期、年份及多段起止数字
-            name = name.replace(/\d{2,4}[\.\-\_/]\d{1,2}[\.\-\_/]\d{1,2}/g, ''); 
-            name = name.replace(/\d{4,8}/g, ''); 
-            name = name.replace(/[-~至]/g, '');
-            name = name.replace(/好看|还行|一般/g, '');
-
-            const filterKeywords = [
-                "修丽可", "SkinCeuticals", "skinceuticals", "SKC", "skc", "SC", "sc",
-                "AGE面霜", "PTIOX精华", "AGE家族", "AGE精华", "银伞防晒", "色修精华", "AGE", "age"
-            ];
-            filterKeywords.forEach(kw => {
-                name = name.replace(new RegExp(kw, 'gi'), '');
-            });
-
-            name = name.replace(/[\s\-_\[\]\(\)\【\】\(\)\（\）\，\,\。]+/g, ' ');
-            name = name.replace(/\d+ Seats/gi, ''); 
-            name = name.replace(/\b\d+\b/g, ''); 
-            name = name.replace(/\d+/g, ''); 
-
-            name = name.trim();
-            return name || rawString.trim();
-        }
-
-        function renderOpinionTagHtml(tag) {
-            if (!tag) return "";
-            if (tag === "好看") {
-                return `<span class="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-gold-100 text-gold-600 border border-gold-500/20 select-none">好看</span>`;
-            }
-            if (tag === "还行") {
-                return `<span class="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-600 border border-blue-200 select-none">还行</span>`;
-            }
-            if (tag === "一般") {
-                return `<span class="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-gray-100 text-gray-500 border border-gray-200 select-none">一般</span>`;
-            }
-            return "";
-        }
-
-        // 操作人输入管理
-        function handleOperatorFocus(elem) {
-            if (elem.value === "请输入操作人姓名") {
-                elem.value = "";
-                elem.classList.remove("text-gold-500/50");
-                elem.classList.add("text-gold-500");
-            }
-        }
-
-        function handleOperatorBlur(elem) {
-            const val = elem.value.trim();
-            if (val === "" || val === "请输入操作人姓名") {
-                elem.value = "请输入操作人姓名";
-                elem.classList.add("operator-warn", "border-red-500");
-                document.getElementById('operator-avatar').innerText = "??";
-            } else {
-                elem.classList.remove("operator-warn", "border-red-500");
-                elem.classList.add("border-gray-700");
-                const avatarText = val.substring(0, 2).toUpperCase();
-                document.getElementById('operator-avatar').innerText = avatarText;
-            }
-        }
-
-        function handleOperatorInput(elem) {
-            const val = elem.value.trim();
-            if (val !== "" && val !== "请输入操作人姓名") {
-                elem.classList.remove("operator-warn", "border-red-500");
-                elem.classList.add("border-gray-700");
-                const avatarText = val.substring(0, 2).toUpperCase();
-                document.getElementById('operator-avatar').innerText = avatarText;
-            } else {
-                elem.classList.add("operator-warn", "border-red-500");
-                document.getElementById('operator-avatar').innerText = "??";
-            }
-        }
-
-        // 已归档阅览大图弹窗
-        function openArchivedLargePreview(name, base64Img) {
-            if (!base64Img) {
-                alert("🔒 该归档记录未存盘合规授权书预览图，无法呼出高清阅览！");
-                return;
-            }
-            
-            largePreviewModal.classList.remove('hidden');
-            modalTitle.innerText = `📄 归档授权合同高清核验：${name}`;
-            modalSubtitle.innerText = `数据来源：L'Oréal 内网公共盘数据库固化 Base64 缓存（免挂载极速通道）`;
-            modalImg.src = base64Img;
-            
-            btnModalDownload.onclick = () => {
-                const link = document.createElement('a');
-                link.href = base64Img;
-                link.download = `${name}_授权合同_已归档备份.jpg`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-        }
-
-        function switchPage(page) {
-            const pageImport = document.getElementById('page-import');
-            const pageLibrary = document.getElementById('page-library');
-            const btnImport = document.getElementById('nav-btn-import');
-            const btnLibrary = document.getElementById('nav-btn-library');
-
-            if (page === 'import') {
-                pageImport.classList.remove('hidden');
-                pageLibrary.classList.add('hidden');
-                btnImport.className = "flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all bg-gold-500 text-sc-950 shadow";
-                btnLibrary.className = "flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all text-gray-400 hover:text-white";
-            } else {
-                pageImport.classList.add('hidden');
-                pageLibrary.classList.remove('hidden');
-                btnImport.className = "flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all text-gray-400 hover:text-white";
-                btnLibrary.className = "flex items-center space-x-2 px-6 py-2.5 rounded-md text-xs font-bold tracking-wider transition-all bg-gold-500 text-sc-950 shadow";
-                renderDatabaseTable(); 
-            }
-        }
-
-        const opNameInput = document.getElementById('operator-name');
-
-        // 高稳定 FileSystem 原生公共盘连接链路
-        async function connectToSharedFolder() {
-            try {
-                const dirHandle = await window.showDirectoryPicker({
-                    mode: "readwrite"
-                });
-
-                dbHandle = await dirHandle.getFileHandle("sc_kol_db.json", { create: true });
-                const file = await dbHandle.getFile();
-                const text = await file.text();
-                
-                if (text.trim() === "") {
-                    sharedDatabase = [];
-                } else {
-                    sharedDatabase = JSON.parse(text);
-                }
-
-                btnConnectDir.classList.add('hidden');
-                connectStatus.classList.remove('hidden');
-                
-                // 连接成功后解锁并渲染上传按钮样式
-                [btnSelectFolder, btnSelectZip].forEach(btn => {
-                    btn.disabled = false;
-                    btn.className = "w-full sm:w-auto bg-sc-950 hover:bg-gold-500 hover:text-sc-950 text-white text-xs font-bold py-3 px-5 rounded-lg tracking-wider shadow-md flex items-center justify-center cursor-pointer transition-all";
-                });
-
-                uploadTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="px-6 py-16 text-center text-gray-400 select-none">
-                            <i class="fa-solid fa-arrow-up-from-bracket text-3xl mb-3 block text-gray-300"></i>
-                            公共盘已连接！请在上方配置产品，并上传达人“总文件夹”或“ZIP包”进行分拣
-                        </td>
-                    </tr>`;
-
-                alert("✅ 成功连接 L'Oréal 内网公共盘！\n\n数据表 sc_kol_db.json 已在公共目录下解锁。");
-
-                let opInput = "";
-                while (!opInput || opInput.trim() === "" || opInput === "请输入操作人姓名") {
-                    opInput = prompt("📝 【重要留痕安全提示】\n内网共享盘 Y2026 数据源连接就绪，请填写您的“操作人姓名”进行操作留档备案：", "");
-                    if (opInput === null) {
-                        alert("⚠ 系统将保留操作人为待填写状态。您随时可以双击页面右上角的「当前操作人标签」重新填写！");
-                        break;
-                    }
-                    if (opInput.trim() !== "") {
-                        opNameInput.value = opInput.trim();
-                        opNameInput.classList.remove("operator-warn", "border-red-500");
-                        opNameInput.classList.add("border-gray-700");
-                        document.getElementById('operator-avatar').innerText = opInput.trim().substring(0, 2).toUpperCase();
-                        alert(`✨ 操作人标签已成功变更为：【${opInput.trim()}】`);
-                        break;
-                    }
-                }
-
-            } catch (err) {
-                alert("连接公共盘失败，请确保您有该路径读写权限并且浏览器支持 FileSystem API。\n" + err.message);
-            }
-        }
-
-        // 解析智能到期时间
-        function parseSmartDate(rawString) {
-            if (!rawString) return null;
-
-            const splitPattern = /[-~至]/;
-            if (splitPattern.test(rawString)) {
-                const parts = rawString.split(splitPattern);
-                if (parts.length >= 2) {
-                    const rawEndPart = parts[parts.length - 1].trim();
-                    const matchedDate = parseSingleDate(rawEndPart);
-                    if (matchedDate) return matchedDate;
-                }
-            }
-
-            return parseSingleDate(rawString);
-        }
-
-        function parseSingleDate(text) {
-            if (!text) return null;
-
-            const d1 = text.match(/(?:(\d{4})|(\d{2}))[\.\-\_/](\d{1,2})[\.\-\_/](\d{1,2})/);
-            if (d1) {
-                let y = d1[1] || d1[2];
-                if (y.length === 2) {
-                    y = "20" + y;
-                }
-                const m = d1[3].padStart(2, '0');
-                const d = d1[4].padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            }
-
-            const d2 = text.match(/(?:(20\d{2})|(\d{2}))(\d{2})(\d{2})/);
-            if (d2) {
-                let y = d2[1] || d2[2];
-                if (y.length === 2) {
-                    y = "20" + y;
-                }
-                const m = d2[3];
-                const d = d2[4];
-                if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31) {
-                    return `${y}-${m}-${d}`;
-                }
-            }
-
-            const d3Matches = text.matchAll(/(\d{1,2})[\.\-\_/](\d{1,2})/g);
-            for (const match of d3Matches) {
-                const m = match[1].padStart(2, '0');
-                const d = match[2].padStart(2, '0');
-                if (parseInt(m) >= 1 && parseInt(m) <= 12 && parseInt(d) >= 1 && parseInt(d) <= 31) {
-                    return `2026-${m}-${d}`; 
-                }
-            }
-            return null;
-        }
-
-        // PDF Image 画布转换
-        async function renderPdfToImage(file, onRendered) {
-            const cachedBase64 = pdfCacheMap.get(file);
-            if (cachedBase64) {
-                onRendered(cachedBase64);
-                return;
-            }
-
-            try {
-                const fileReader = new FileReader();
-                fileReader.onload = function() {
-                    const typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                        pdf.getPage(1).then(function(page) {
-                            const tempCanvas = document.createElement('canvas');
-                            const viewport = page.getViewport({ scale: 1.5 });
-                            const context = tempCanvas.getContext('2d');
-                            tempCanvas.height = viewport.height;
-                            tempCanvas.width = viewport.width;
-
-                            const renderContext = {
-                                canvasContext: context,
-                                viewport: viewport
-                            };
-                            page.render(renderContext).promise.then(function() {
-                                const imgBase64 = tempCanvas.toDataURL('image/jpeg', 0.9);
-                                pdfCacheMap.set(file, imgBase64);
-                                onRendered(imgBase64);
-                                tempCanvas.remove();
-                            });
-                        });
-                    }).catch(err => {
-                        console.error("PDF.js 渲染出错: ", err);
-                        onRendered(null);
-                    });
-                };
-                fileReader.readAsArrayBuffer(file);
-            } catch(e) {
-                console.error("加载 PDF 异常: ", e);
-                onRendered(null);
-            }
-        }
-
-        // 复制物理相对路径
-        function copyOriginalPath(originalPath, event) {
-            if (event) event.stopPropagation();
-            if (!originalPath) {
-                alert("路径有误，无法复制");
-                return;
-            }
-            navigator.clipboard.writeText(originalPath).then(() => {
-                alert(`📋 上传原文件物理相对路径已成功复制！\n路径：${originalPath}`);
-            }).catch(err => {
-                alert("路径复制失败: " + err);
-            });
-        }
-
-        // 悬浮预览核心逻辑
-        function triggerFileHover(e, registryIndex, filename, isArchived, previewBase64, archivedRelativePath) {
-            if (hoveredRegistryIndex === registryIndex && registryIndex !== null) {
-                hoverMediaCard.style.left = `${e.clientX + 20}px`;
-                hoverMediaCard.style.top = `${e.clientY + 10}px`;
-                return;
-            }
-
-            hoveredRegistryIndex = registryIndex;
-            hoverMediaCard.style.left = `${e.clientX + 20}px`;
-            hoverMediaCard.style.top = `${e.clientY + 10}px`;
-
-            if (isArchived) {
-                document.getElementById('preview-filename').innerText = filename;
-                document.getElementById('preview-filesize').innerText = "归档状态: 已安全备份在 Y2026 内网共享库中";
-                document.getElementById('preview-filepath').innerText = `上传相对路径: ${archivedRelativePath || '无'}`;
-                document.getElementById('preview-type-badge').innerText = "SHARED STORAGE";
-                document.getElementById('preview-type-badge').className = "px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-gold-100 text-gold-600";
-                
-                const isVideo = filename.toLowerCase().endsWith('.mp4') || filename.toLowerCase().endsWith('.mov') || filename.toLowerCase().endsWith('.webm');
-                if (isVideo) {
-                    document.getElementById('preview-action-hint').innerText = "💡 公盘视频仅展示名称与路径，以防解码崩溃";
-                    previewMediaContainer.innerHTML = `
-                        <div class="text-center p-4">
-                            <i class="fa-solid fa-video text-gold-500 text-4xl mb-2 block"></i>
-                            <span class="text-[10px] text-gray-400 font-bold block">视频文件物理路径已锚定</span>
-                        </div>
-                    `;
-                } else if (previewBase64) {
-                    document.getElementById('preview-action-hint').innerText = "💡 随时双击链接在大窗口放大批阅核验";
-                    previewMediaContainer.innerHTML = `
-                        <img src="${previewBase64}" class="max-w-full max-h-full object-contain bg-sc-800 rounded border border-gold-500/20" />
-                    `;
-                } else {
-                    document.getElementById('preview-action-hint').innerText = "💡 暂无合规授权书文件预览";
-                    previewMediaContainer.innerHTML = `
-                        <div class="text-center p-4">
-                            <i class="fa-solid fa-file-contract text-gray-500 text-4xl mb-2 block"></i>
-                            <span class="text-[10px] text-gray-400 font-bold block">授权书物理路径已锁定</span>
-                        </div>
-                    `;
-                }
-                hoverMediaCard.classList.remove('hidden');
-                return;
-            }
-
-            if (registryIndex === undefined || registryIndex === null || registryIndex === -1) {
-                return;
-            }
-
-            const file = fileRegistry[registryIndex];
-            if (!file) return;
-
-            let binaryUrl = objectUrlMap.get(file);
-            if (!binaryUrl) {
-                binaryUrl = URL.createObjectURL(file);
-                objectUrlMap.set(file, binaryUrl);
-            }
-
-            document.getElementById('preview-filename').innerText = file.name;
-            document.getElementById('preview-filesize').innerText = `容量: ${(file.size / (1024 * 1024)).toFixed(2)} MB | 格式: ${file.name.split('.').pop().toUpperCase()}`;
-            document.getElementById('preview-filepath').innerText = `上传相对路径: ${file.webkitRelativePath}`;
-
-            const fileLower = file.name.toLowerCase();
-            const isVideo = fileLower.endsWith('.mp4') || fileLower.endsWith('.mov') || fileLower.endsWith('.webm') || fileLower.endsWith('.avi');
-            const isImage = fileLower.endsWith('.jpg') || fileLower.endsWith('.jpeg') || fileLower.endsWith('.png') || fileLower.endsWith('.gif') || fileLower.endsWith('.webp');
-            const isPdf = fileLower.endsWith('.pdf');
-
-            if (isVideo) {
-                document.getElementById('preview-type-badge').innerText = "VIDEO / 视频文件";
-                document.getElementById('preview-type-badge').className = "px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-blue-100 text-blue-600";
-                document.getElementById('preview-action-hint').innerText = "📥 点击右侧下载按钮可直接极速下载本片";
-                previewMediaContainer.innerHTML = `
-                    <div class="text-center p-4">
-                        <i class="fa-solid fa-folder-tree text-blue-500 text-5xl mb-2"></i>
-                        <span class="text-[10px] text-gray-300 block font-bold">本地流通道已加载</span>
-                    </div>
-                `;
-            } else if (isImage) {
-                document.getElementById('preview-type-badge').innerText = "IMAGE / 封面或授权图像";
-                document.getElementById('preview-type-badge').className = "px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-green-100 text-green-600";
-                document.getElementById('preview-action-hint').innerText = "🔍 双击或在列表点击打开高清大图";
-                previewMediaContainer.innerHTML = `
-                    <img src="${binaryUrl}" class="max-w-full max-h-full object-contain bg-sc-800" />
-                `;
-            } else if (isPdf) {
-                document.getElementById('preview-type-badge').innerText = "PDF / 封面解构中";
-                document.getElementById('preview-type-badge').className = "px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-amber-100 text-amber-600 animate-pulse";
-                document.getElementById('preview-action-hint').innerText = "🔍 双击文件名可在大窗口中高清批阅与下载";
-                previewMediaContainer.innerHTML = `
-                    <div class="text-center p-4">
-                        <i class="fa-solid fa-circle-notch animate-spin text-gold-500 text-3xl mb-2 block"></i>
-                        <span class="text-[10px] text-gray-400 block font-bold">高精转绘 Canvas 中...</span>
-                    </div>
-                `;
-                renderPdfToImage(file, (base64Img) => {
-                    if (hoveredRegistryIndex === registryIndex) {
-                        if (base64Img) {
-                            document.getElementById('preview-type-badge').innerText = "PDF / 授权文件页";
-                            document.getElementById('preview-type-badge').className = "px-1.5 py-0.5 rounded text-[9px] uppercase font-extrabold bg-amber-100 text-amber-600";
-                            previewMediaContainer.innerHTML = `
-                                <img src="${base64Img}" class="max-w-full max-h-full object-contain bg-sc-800 rounded border border-gold-500/20" />
-                            `;
-                        } else {
-                            previewMediaContainer.innerHTML = `
-                                <div class="text-center p-4">
-                                    <i class="fa-solid fa-file-pdf text-red-500 text-5xl mb-2 block"></i>
-                                    <span class="text-[10px] text-gray-300 block font-bold">PDF渲染发生阻塞</span>
-                                </div>
-                            `;
-                        }
-                    }
-                });
-            }
-
-            hoverMediaCard.classList.remove('hidden');
-        }
-
-        function hideFileHover() {
-            hoveredRegistryIndex = null;
-            hoverMediaCard.classList.add('hidden');
-            previewMediaContainer.innerHTML = ''; 
-        }
-
-        async function openLargePreview(registryIndex) {
-            if (registryIndex === undefined || registryIndex === null || registryIndex === -1) {
-                alert("该素材处于内网公共盘中，如需预览请重新上传进行流式加载！");
-                return;
-            }
-
-            const file = fileRegistry[registryIndex];
-            if (!file) return;
-
-            largePreviewModal.classList.remove('hidden');
-            modalTitle.innerText = `📄 授权合同高清核验：${file.name}`;
-            modalSubtitle.innerText = `上传相对路径: ${file.webkitRelativePath} | 大小: ${(file.size / (1024 * 1024)).toFixed(2)} MB`;
-            modalImg.src = ''; 
-
-            const fileLower = file.name.toLowerCase();
-            const isImage = fileLower.endsWith('.jpg') || fileLower.endsWith('.jpeg') || fileLower.endsWith('.png') || fileLower.endsWith('.gif') || fileLower.endsWith('.webp');
-            const isPdf = fileLower.endsWith('.pdf');
-
-            btnModalDownload.onclick = () => {
-                downloadFileDirectly(registryIndex);
-            };
-
-            if (isImage) {
-                let binaryUrl = objectUrlMap.get(file);
-                if (!binaryUrl) {
-                    binaryUrl = URL.createObjectURL(file);
-                    objectUrlMap.set(file, binaryUrl);
-                }
-                modalImg.src = binaryUrl;
-            } else if (isPdf) {
-                renderPdfToImage(file, (base64Img) => {
-                    if (base64Img) {
-                        modalImg.src = base64Img;
-                    } else {
-                        alert("PDF 高清大图生成失败，请下载查看！");
-                    }
-                });
-            } else {
-                alert("此格式无法大图化呈现，请点击右侧一键下载原始文件！");
-                closeLargePreview();
-            }
-        }
-
-        function closeLargePreview() {
-            largePreviewModal.classList.add('hidden');
-        }
-
-        function downloadFileDirectly(registryIndex) {
-            const file = fileRegistry[registryIndex];
-            if (!file) return;
-
-            let binaryUrl = objectUrlMap.get(file);
-            if (!binaryUrl) {
-                binaryUrl = URL.createObjectURL(file);
-                objectUrlMap.set(file, binaryUrl);
-            }
-
-            const link = document.createElement('a');
-            link.href = binaryUrl;
-            link.download = file.name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function handleZipFile(file) {
-            statusContainer.classList.remove('hidden');
-            uploadStatusText.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-gold-500 mr-2"></i> 正在解压并智能分析 ZIP 压缩包...`;
-
-            JSZip.loadAsync(file).then(async function(zip) {
-                const filesList = [];
-                const mockFiles = [];
-
-                zip.forEach((relativePath, entry) => {
-                    if (entry.dir) return;
-                    if (relativePath.includes('__MACOSX') || relativePath.startsWith('.') || relativePath.includes('.DS_Store')) return;
-                    filesList.push(entry);
-                });
-
-                for (let entry of filesList) {
-                    const blob = await entry.async("blob");
-                    const pathParts = entry.name.split('/');
-                    const filename = pathParts[pathParts.length - 1];
-                    const reconstructedFile = new File([blob], filename, { type: blob.type });
-                    
-                    Object.defineProperty(reconstructedFile, 'webkitRelativePath', {
-                        value: entry.name,
-                        writable: false
-                    });
-                    mockFiles.push(reconstructedFile);
-                }
-
-                handleLocalFolder(mockFiles, true); 
-
-            }).catch(err => {
-                alert('ZIP 解析失败：' + err.message);
-                uploadStatusText.innerText = "ZIP解压失败";
-            });
-        }
-
-        // 极速、顺畅的多文件解析拆解与视频智能人脸提取
-        function handleLocalFolder(files, isZip = false) {
-            statusContainer.classList.remove('hidden');
-            uploadStatusText.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-gold-500 mr-2"></i> 正在扫描总目录并提取达人授权到期日与视频人脸帧...`;
-
-            tempParsedKols = {};
-            fileRegistry = []; 
-
-            // 内存释放：销毁上个批次的临时二进制 URL，杜绝卡顿
-            for (let [f, url] of objectUrlMap.entries()) {
-                URL.revokeObjectURL(url);
-            }
-            objectUrlMap.clear();
-            pdfCacheMap.clear();
-
-            const selectedProduct = document.getElementById('import-product').value;
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const path = file.webkitRelativePath || file.name; 
-                const pathParts = path.split('/');
-
-                let rawKOLDir = "通用未分类达人";
-                if (pathParts.length >= 2) {
-                    rawKOLDir = pathParts[pathParts.length - 2].trim(); 
-                }
-                
-                const opinionTag = detectOpinionTag(rawKOLDir);
-                const cleanName = cleanKOLName(rawKOLDir);
-                
-                const fileName = pathParts[pathParts.length - 1] || file.name;
-                const fileLower = fileName.toLowerCase();
-
-                if (fileName === "" || fileName.startsWith('.') || fileName.startsWith('__MACOSX')) continue;
-
-                let detectedDate = parseSmartDate(rawKOLDir);
-                const registryIndex = fileRegistry.push(file) - 1;
-
-                if (!tempParsedKols[cleanName]) {
-                    tempParsedKols[cleanName] = {
-                        originalName: cleanName, 
-                        name: cleanName,         
-                        product: selectedProduct,
-                        opinionTag: opinionTag, 
-                        allVideos: [],      
-                        allAuths: [],       
-                        allImages: [],       
-                        archiveDate: TODAY_STR,
-                        expireDate: detectedDate || "", 
-                        isDateExtracted: !!detectedDate,
-                        coverUrl: null       
-                    };
-                } else {
-                    if (!tempParsedKols[cleanName].isDateExtracted && detectedDate) {
-                        tempParsedKols[cleanName].expireDate = detectedDate;
-                        tempParsedKols[cleanName].isDateExtracted = true;
-                    }
-                }
-
-                const fileObj = {
-                    name: fileName,
-                    size: (file.size / (1024 * 1024)).toFixed(2) + " MB",
-                    relativePath: path,
-                    registryIndex: registryIndex
-                };
-
-                const isVideo = fileLower.endsWith('.mp4') || fileLower.endsWith('.mov') || fileLower.endsWith('.webm') || fileLower.endsWith('.avi');
-                const isExplicitAuth = fileLower.endsWith('.pdf') || fileLower.endsWith('.docx') || fileLower.includes('授权') || fileLower.includes('合同') || fileLower.includes('协议') || fileLower.includes('auth') || fileLower.includes('license');
-                const isImage = fileLower.endsWith('.jpg') || fileLower.endsWith('.jpeg') || fileLower.endsWith('.png') || fileLower.endsWith('.webp');
-
-                if (isVideo) {
-                    tempParsedKols[cleanName].allVideos.push(fileObj);
-                } else if (isExplicitAuth) {
-                    tempParsedKols[cleanName].allAuths.push(fileObj);
-                } else if (isImage) {
-                    // 彻底屏蔽本地图片/授权书作为头像
-                    tempParsedKols[cleanName].allImages.push(fileObj);
-                }
-            }
-
-            const list = Object.values(tempParsedKols);
-            if (list.length === 0) {
-                uploadStatusText.innerHTML = `<span class="text-red-500 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 解析失败！未扫描到任何有效的文件。</span>`;
-                return;
-            }
-
-            list.forEach(kol => {
-                const pureFound = kol.allVideos.find(v => v.name.includes('纯净') || v.name.toLowerCase().includes('clean') || v.name.toLowerCase().includes('raw') || v.name.toLowerCase().includes('无字'));
-                const postedFound = kol.allVideos.find(v => v.name.includes('成片') || v.name.toLowerCase().includes('posted') || v.name.toLowerCase().includes('publish') || v.name.toLowerCase().includes('发布'));
-
-                if (pureFound) {
-                    kol.pureVideo = pureFound.name;
-                    kol.pureVideoPath = pureFound.relativePath;
-                    kol.pureVideoRegistryIndex = pureFound.registryIndex;
-                }
-                if (postedFound) {
-                    kol.postedVideo = postedFound.name;
-                    kol.postedVideoPath = postedFound.relativePath;
-                    kol.postedVideoRegistryIndex = postedFound.registryIndex;
-                }
-
-                kol.hasDuplicateVideoName = false;
-                if (kol.allVideos.length >= 2) {
-                    const videoNames = kol.allVideos.map(v => v.name);
-                    const duplicatesExist = videoNames.some((val, idx) => videoNames.indexOf(val) !== idx);
-                    if (duplicatesExist) {
-                        kol.hasDuplicateVideoName = true;
-                    }
-
-                    if (!kol.pureVideo) {
-                        kol.pureVideo = kol.allVideos[0].name;
-                        kol.pureVideoPath = kol.allVideos[0].relativePath;
-                        kol.pureVideoRegistryIndex = kol.allVideos[0].registryIndex;
-                    }
-                    if (!kol.postedVideo) {
-                        kol.postedVideo = kol.allVideos[1].name;
-                        kol.postedVideoPath = kol.allVideos[1].relativePath;
-                        kol.postedVideoRegistryIndex = kol.postedVideo.registryIndex;
-                    }
-                } else if (kol.allVideos.length === 1) {
-                    if (!kol.pureVideo) {
-                        kol.pureVideo = kol.allVideos[0].name;
-                        kol.pureVideoPath = kol.allVideos[0].relativePath;
-                        kol.pureVideoRegistryIndex = kol.allVideos[0].registryIndex;
-                    }
-                }
-
-                if (kol.allAuths.length > 0) {
-                    kol.authFiles = kol.allAuths.map(a => a.name);
-                    kol.authFilesPaths = kol.allAuths.map(a => a.relativePath);
-                    kol.authFilesRegistryIndex = kol.allAuths[0].registryIndex;
-                    
-                    const authFile = fileRegistry[kol.authFilesRegistryIndex];
-                    if (authFile) {
-                        const fileLower = authFile.name.toLowerCase();
-                        if (fileLower.endsWith('.pdf')) {
-                            renderPdfToImage(authFile, (base64Img) => {
-                                if (base64Img) kol.authPreviewBase64 = base64Img;
-                            });
-                        } else if (fileLower.endsWith('.docx')) {
-                            kol.authPreviewBase64 = null;
-                        } else {
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                kol.authPreviewBase64 = e.target.result;
-                            };
-                            reader.readAsDataURL(authFile);
-                        }
-                    }
-                } else {
-                    kol.authFiles = [];
-                    kol.authFilesPaths = [];
-                    kol.authFilesRegistryIndex = -1;
-                    kol.authPreviewBase64 = null;
-                }
-
-                // 将所有达人视频解码推入串行管线，依靠新版 GPU 异步处理器平滑加载
-                if (kol.allVideos.length > 0) {
-                    const videoFile = fileRegistry[kol.allVideos[0].registryIndex];
-                    if (videoFile) {
-                        registerVideoToQueue(videoFile, (base64Face) => {
-                            if (base64Face) {
-                                kol.coverUrl = base64Face;
-                            } else {
-                                kol.coverUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%231F2226"/><text x="50%" y="55%" font-size="12" fill="%23C5A059" font-family="sans-serif" text-anchor="middle" font-weight="bold">${kol.name.substring(0,2).toUpperCase()}</text></svg>`;
-                            }
-                            renderUploadTable(); 
-                        });
-                    }
-                }
-            });
-
-            uploadStatusText.innerHTML = `
-                <span class="text-green-600 font-bold">
-                    <i class="fa-solid fa-circle-check mr-1"></i> 
-                    总文件夹分拣完成！串行解码器正以 4x 速度顺次提取头像。如有提取错误，点击头像旁【⚡ 纠偏】即可智能重扫。
-                </span>`;
-            
-            importSummaryCard.classList.remove('hidden');
-            updateSummaryCounters();
-            renderUploadTable();
-        }
-
-        // 动态统计
-        function updateSummaryCounters() {
-            const list = Object.values(tempParsedKols);
-            const total = list.length;
-            
-            const ready = list.filter(kol => kol.allVideos.length >= 2 && kol.authFiles.length >= 1 && kol.expireDate).length;
-            const pending = total - ready;
-
-            summaryScanCount.innerHTML = `${total} <span class="text-xs text-gray-500 font-normal">位达人</span>`;
-            summaryReadyCount.innerHTML = `${ready} <span class="text-xs text-gray-500 font-normal">位可一键归档</span>`;
-            summaryPendingCount.innerHTML = `${pending} <span class="text-xs text-gray-500 font-normal">位未达标</span>`;
-        }
-
-        // 达人手动修改名字
-        function handleNameInputChange(originalKeyName, newNameVal) {
-            const cleanNewName = newNameVal.trim();
-            if (cleanNewName === "") return;
-            
-            if (tempParsedKols[originalKeyName]) {
-                tempParsedKols[originalKeyName].name = cleanNewName;
-            }
-        }
-
-        // 渲染初审表
-        function renderUploadTable() {
-            uploadTableBody.innerHTML = '';
-            const list = Object.values(tempParsedKols);
-
-            if (list.length === 0) {
-                uploadTableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-gray-400">未扫描到正确的达人文件夹（请先连接公共盘并选择上方按钮上传）</td></tr>`;
-                btnBatchSave.classList.add('hidden');
-                return;
-            }
-
-            btnBatchSave.classList.remove('hidden');
-
-            list.forEach(kol => {
-                const hasTwoVideos = kol.allVideos.length >= 2;
-                const hasAuth = kol.authFiles.length >= 1;
-                const isAllComplete = hasTwoVideos && hasAuth;
-
-                let missing = [];
-                if (kol.allVideos.length < 2) missing.push(`视频不足2个`);
-                if (!hasAuth) missing.push('授权书');
-
-                let avatarHtml = `
-                    <div class="w-7 h-7 rounded-full bg-sc-800 border border-gold-500/30 flex items-center justify-center text-[10px] text-gold-500 font-bold mr-2 flex-shrink-0">
-                        <i class="fa-solid fa-circle-notch animate-spin text-[8px]"></i>
-                    </div>`;
-                if (kol.coverUrl) {
-                    avatarHtml = `
-                        <div class="relative group mr-2 flex-shrink-0 flex items-center space-x-1" id="avatar-box-${kol.originalName}">
-                            <div class="relative group cursor-pointer"
-                                 onmousemove="triggerFileHover(event, null, '视频AI截取达人脸封面', true, '${kol.coverUrl}', '视频内置流实时提取')"
-                                 onmouseleave="hideFileHover()">
-                                <img src="${kol.coverUrl}" class="w-7 h-7 rounded-full object-cover border border-gold-500 shadow-sm" />
-                                <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-white"></span>
-                            </div>
-                            <!-- 一键深度人脸智能检索纠偏 -->
-                            <button onclick="retriggerDeepScan('${kol.originalName}')" 
-                                    class="text-[9px] bg-sc-900 text-gold-500 border border-gold-500/30 px-1 py-0.5 rounded font-extrabold hover:bg-gold-500 hover:text-sc-950 transition-all select-none" 
-                                    title="识别错误？点击扫描整条片子提取完美露脸帧">
-                                ⚡纠偏
-                            </button>
-                        </div>
-                    `;
-                }
-
-                const row = document.createElement('tr');
-                row.className = "hover:bg-gray-50/50 transition-colors border-b border-gray-100";
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap font-bold text-sc-900">
-                        <div class="flex items-center">
-                            ${avatarHtml}
-                            <div class="flex items-center">
-                                <input type="text" value="${kol.name}" 
-                                       oninput="handleNameInputChange('${kol.originalName}', this.value)"
-                                       class="bg-white border border-gray-300 rounded px-2.5 py-1 text-xs text-sc-950 font-extrabold focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/30 w-36 select-all" 
-                                       title="点击直接修改人名">
-                                ${renderOpinionTagHtml(kol.opinionTag)}
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap"><span class="px-2.5 py-1 text-xs font-bold rounded bg-gold-100 text-gold-600 border border-gold-500/20">${kol.product}</span></td>
-                    
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-600" 
-                        onmousemove="triggerFileHover(event, ${kol.pureVideoRegistryIndex !== undefined ? kol.pureVideoRegistryIndex : -1}, '', false, null)"
-                        onmouseleave="hideFileHover()">
-                        ${kol.pureVideo ? `
-                            <div class="flex items-center justify-center space-x-1.5">
-                                <span class="underline decoration-dotted text-gray-600 font-bold cursor-pointer hover:text-gold-500" onclick="copyOriginalPath('${kol.pureVideoPath}', event)">${kol.pureVideo.substring(0, 10)}...</span>
-                                <button onclick="downloadFileDirectly(${kol.pureVideoRegistryIndex})" class="text-blue-500 hover:text-blue-700 transition-all shadow-sm" title="极速下载"><i class="fa-solid fa-circle-down text-sm"></i></button>
-                                <button onclick="copyOriginalPath('${kol.pureVideoPath}', event)" class="text-slate-400 hover:text-gold-500 transition-all" title="复制上传相对路径"><i class="fa-solid fa-copy"></i></button>
-                            </div>` : `<span class="text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>缺纯视频</span>`}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-600"
-                        onmousemove="triggerFileHover(event, ${kol.postedVideoRegistryIndex !== undefined ? kol.postedVideoRegistryIndex : -1}, '', false, null)"
-                        onmouseleave="hideFileHover()">
-                        ${kol.postedVideo ? `
-                            <div class="flex items-center justify-center space-x-1.5">
-                                <span class="underline decoration-dotted text-gray-600 font-bold cursor-pointer hover:text-gold-500" onclick="copyOriginalPath('${kol.postedVideoPath}', event)">${kol.postedVideo.substring(0, 10)}...</span>
-                                <button onclick="downloadFileDirectly(${kol.postedVideoRegistryIndex})" class="text-blue-500 hover:text-blue-700 transition-all shadow-sm" title="极速下载"><i class="fa-solid fa-circle-down text-sm"></i></button>
-                                <button onclick="copyOriginalPath('${kol.postedVideoPath}', event)" class="text-slate-400 hover:text-gold-500 transition-all" title="复制上传相对路径"><i class="fa-solid fa-copy"></i></button>
-                            </div>` : `<span class="text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>缺成片</span>`}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-600"
-                        onmousemove="triggerFileHover(event, ${kol.authFilesRegistryIndex !== undefined ? kol.authFilesRegistryIndex : -1}, '', false, null)"
-                        onmouseleave="hideFileHover()">
-                        ${hasAuth ? `
-                            <div class="flex items-center justify-center space-x-2">
-                                <span class="underline decoration-dotted font-bold cursor-pointer hover:text-gold-500" onclick="openLargePreview(${kol.authFilesRegistryIndex})">📄 共 ${kol.authFiles.length} 份</span>
-                                <button onclick="downloadFileDirectly(${kol.authFilesRegistryIndex})" class="text-green-600 hover:text-green-800 transition-all" title="下载"><i class="fa-solid fa-circle-down text-sm"></i></button>
-                            </div>` : `❌`}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap font-mono text-xs text-gray-600">
-                        <div class="flex flex-col items-center justify-center space-y-1">
-                            <input type="date" id="expire-${kol.originalName}" value="${kol.expireDate}" class="bg-white border ${kol.isDateExtracted ? 'border-green-500 ring-1 ring-green-100' : 'border-red-400 ring-1 ring-red-100'} text-gray-900 text-xs rounded p-1.5 focus:ring-1 focus:ring-gold-500 focus:outline-none font-bold" onchange="updateTempExpire('${kol.originalName}', this.value)">
-                            ${kol.isDateExtracted ? 
-                                `<span class="text-[9px] text-green-600 font-extrabold block"><i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 识别成功</span>` : 
-                                `<span class="text-[9px] text-red-500 font-extrabold block"><i class="fa-solid fa-triangle-exclamation mr-0.5"></i> 填入到期日</span>`
-                            }
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap">
-                        <div class="flex flex-col items-center space-y-1">
-                            ${isAllComplete && kol.expireDate ? 
-                                `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">✅ 资料齐备就绪</span>` : 
-                                `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800" title="缺失项目">❌ 缺失 [${missing.join('/') || '到期日'}]</span>`
-                            }
-                            ${kol.hasDuplicateVideoName ? 
-                                `<span class="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-800 animate-pulse border border-amber-300">⚠ 视频同名，疑似拷贝！</span>` : ""
-                            }
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap">
-                        <div class="flex flex-col space-y-1.5 justify-center items-center">
-                            ${isAllComplete && kol.expireDate ? 
-                                `<button onclick="saveToLibrary('${kol.originalName}')" class="bg-sc-950 text-white hover:bg-gold-500 hover:text-sc-950 text-xs font-bold px-3 py-1.5 rounded transition-all shadow-sm"><i class="fa-solid fa-folder-plus mr-1"></i>确认留存</button>` : 
-                                (kol.expireDate && hasAuth ? 
-                                    `<button onclick="saveToLibrary('${kol.originalName}', true)" class="bg-amber-500 hover:bg-amber-600 text-sc-950 text-xs font-bold px-3 py-1.5 rounded transition-all shadow-sm"><i class="fa-solid fa-triangle-exclamation mr-1"></i>强制归档</button>` : 
-                                    `<button disabled class="bg-gray-200 text-gray-400 text-xs font-semibold px-3 py-1.5 rounded cursor-not-allowed">资料不足</button>`
-                                )
-                            }
-                        </div>
-                    </td>
-                `;
-                uploadTableBody.appendChild(row);
-            });
-        }
-
-        // 归档更新到期时间
-        function updateTempExpire(kolName, val) {
-            if (tempParsedKols[kolName]) {
-                tempParsedKols[kolName].expireDate = val;
-                tempParsedKols[kolName].isDateExtracted = !!val;
-                updateSummaryCounters();
-                renderUploadTable();
-            }
-        }
-
-        // 归档单人
-        async function saveToLibrary(kolOriginalName, isForced = false) {
-            const operator = opNameInput.value.trim();
-            if (operator === "" || operator === "请输入操作人姓名") {
-                alert("❌ 【归档拦截】\n请先在页面右上角修改操作人为您的真实姓名，否则系统无法进行归档留痕。");
-                opNameInput.focus();
-                return;
-            }
-
-            const kol = tempParsedKols[kolOriginalName];
-            if (!kol) return;
-
-            const finalName = kol.name.trim();
-            if (finalName === "") {
-                alert("❌ 达人姓名不能为空，请重新修改！");
-                return;
-            }
-
-            if (!kol.expireDate) {
-                alert(`❌ 请先设定到达人「${finalName}」的到期日。`);
-                return;
-            }
-
-            if (!dbHandle) {
-                alert("❌ 未连接内网公共盘数据库，请点击上方建立授权物理锁定！");
-                return;
-            }
-
-            if (isForced && !confirm(`⚠ 达人「${finalName}」视频材料并未完全给齐。是否确定要【强制留档】？`)) {
-                return;
-            }
-            
-            const record = {
-                name: finalName, 
-                product: kol.product,
-                opinionTag: kol.opinionTag || "", 
-                pureVideo: kol.pureVideo || "",
-                pureVideoPath: kol.pureVideoPath || "",
-                postedVideo: kol.postedVideo || "",
-                postedVideoPath: kol.postedVideoPath || "",
-                authFiles: kol.authFiles,
-                authFilesPaths: kol.authFilesPaths || [],
-                expireDate: kol.expireDate,
-                archiveDate: TODAY_STR,
-                operator: operator,
-                authPreviewBase64: kol.authPreviewBase64 || null,
-                coverUrl: kol.coverUrl || null, 
-                isIncomplete: isForced
-            };
-
-            if (sharedDatabase.some(item => item.name === finalName && item.product === kol.product)) {
-                alert(`⚠ 达人「${finalName}」在「${kol.product}」下已存在，无需重复录入！`);
-                return;
-            }
-
-            sharedDatabase.push(record);
-
-            try {
-                const writable = await dbHandle.createWritable();
-                await writable.write(JSON.stringify(sharedDatabase, null, 2));
-                await writable.close();
-
-                let currentArchived = parseInt(summaryArchivedCount.innerText) || 0;
-                summaryArchivedCount.innerHTML = `${currentArchived + 1} <span class="text-xs text-gray-500 font-normal">位已落盘</span>`;
-
-                delete tempParsedKols[kolOriginalName];
-                updateSummaryCounters();
-                renderUploadTable();
-                alert(`🎉 达人「${finalName}」已成功归档落盘！`);
-            } catch (err) {
-                alert("写入公共盘文件失败，请确保有编辑写入权限：" + err.message);
-            }
-        }
-
-        // 一键批量归档完美达人
-        async function saveAllCompleteToLibrary() {
-            const operator = opNameInput.value.trim();
-            if (operator === "" || operator === "请输入操作人姓名") {
-                alert("❌ 【批量归档拦截】\n在进行一键归档前，请先修改操作人为您的真实姓名！");
-                opNameInput.focus();
-                return;
-            }
-
-            const list = Object.values(tempParsedKols);
-            const completeKols = list.filter(kol => kol.allVideos.length >= 2 && kol.authFiles.length >= 1 && kol.expireDate);
-
-            if (completeKols.length === 0) {
-                alert('⚠ 本次解析列表中暂无“资料完全齐备”的就绪达人素材！\n如有急需，请点击单个【⚠ 强制归档】进行补录。');
-                return;
-            }
-
-            if (!dbHandle) {
-                alert("❌ 无法导入！请先连接内网公共盘数据库");
-                return;
-            }
-
-            let addedCount = 0;
-            let skippedCount = 0;
-            let savedListNames = [];
-
-            completeKols.forEach(kol => {
-                const finalName = kol.name.trim();
-                if (finalName === "") return;
-
-                if (sharedDatabase.some(item => item.name === finalName && item.product === kol.product)) {
-                    skippedCount++;
-                } else {
-                    sharedDatabase.push({
-                        name: finalName, 
-                        product: kol.product,
-                        opinionTag: kol.opinionTag || "",
-                        pureVideo: kol.pureVideo,
-                        pureVideoPath: kol.pureVideoPath || "",
-                        postedVideo: kol.postedVideo,
-                        postedVideoPath: kol.postedVideoPath || "",
-                        authFiles: kol.authFiles,
-                        authFilesPaths: kol.authFilesPaths || [],
-                        expireDate: kol.expireDate,
-                        archiveDate: TODAY_STR,
-                        operator: operator,
-                        authPreviewBase64: kol.authPreviewBase64 || null,
-                        coverUrl: kol.coverUrl || null,
-                        isIncomplete: false
-                    });
-                    addedCount++;
-                    savedListNames.push(finalName);
-                    delete tempParsedKols[kol.originalName];
-                }
-            });
-
-            if (addedCount > 0) {
-                try {
-                    const writable = await dbHandle.createWritable();
-                    await writable.write(JSON.stringify(sharedDatabase, null, 2));
-                    await writable.close();
-
-                    let prevArchived = parseInt(summaryArchivedCount.innerText) || 0;
-                    summaryArchivedCount.innerHTML = `${prevArchived + addedCount} <span class="text-xs text-gray-500 font-normal">位已落盘</span>`;
-
-                    alert(`✅ 批量齐备归档完成！成功汇总落盘 ${addedCount} 位。`);
-                    updateSummaryCounters();
-                    renderUploadTable(); 
-                } catch (err) {
-                    alert("批量归档写入文件失败：" + err.message);
-                }
-            } else {
-                alert(`ℹ 本次所有齐备达人之前均已入库，无需重复归档。`);
-            }
-        }
-
-        // Excel 导出
-        function exportLibraryToExcel() {
-            if (!dbHandle || sharedDatabase.length === 0) {
-                alert("❌ 共享数据库中暂无任何已归档留存的达人信息，无法导出！");
-                return;
-            }
-
-            const filterStatusVal = document.getElementById('filter-status').value;
-
-            let csvContent = "\uFEFF"; 
-            csvContent += "纯达人姓名,评价倾向,推广产品分类(Sheet),归档留存日期,归档留存操作人,授权截止到期日,追踪安全状态,纯净版视频名,纯净版相对路径,发布版成片名,发布版相对路径,已存盘授权合同文件名\n";
-
-            sharedDatabase.forEach((kol) => {
-                if (currentActiveSheet !== 'ALL' && kol.product !== currentActiveSheet) return;
-                
-                if (searchKolTags.length > 0) {
-                    const matchesAny = searchKolTags.some(tag => kol.name.toLowerCase().includes(tag.toLowerCase()));
-                    if (!matchesAny) return;
-                }
-
-                const expire = new Date(kol.expireDate);
-                const timeDiff = expire.getTime() - TODAY.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); 
-
-                let statusType = "安全授权中";
-                if (kol.isIncomplete) statusType = "视频不全(待补)";
-                else if (daysDiff < 0) statusType = "已过期";
-                else if (daysDiff <= 30) statusType = `即将到期(剩${daysDiff}天)`;
-
-                if (filterStatusVal !== "ALL") {
-                    let sType = "SAFE";
-                    if (kol.isIncomplete) sType = "INCOMPLETE";
-                    else if (daysDiff < 0) sType = "EXPIRED";
-                    else if (daysDiff <= 30) sType = "WARNING";
-                    if (sType !== filterStatusVal) return;
-                }
-
-                const line = [
-                    `"${kol.name}"`,
-                    `"${kol.opinionTag || '无'}"`,
-                    `"${kol.product}"`,
-                    `"${kol.archiveDate || TODAY_STR}"`,
-                    `"${kol.operator || "未知"}"`,
-                    `"${kol.expireDate}"`,
-                    `"${statusType}"`,
-                    `"${kol.pureVideo || '无'}"`,
-                    `"${kol.pureVideoPath || '无'}"`,
-                    `"${kol.postedVideo || '无'}"`,
-                    `"${kol.postedVideoPath || '无'}"`,
-                    `"${kol.authFiles ? kol.authFiles.join('; ') : '无'}"`
-                ].join(",");
-
-                csvContent += line + "\n";
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const dateSuffix = new Date().toISOString().split('T')[0];
-            link.href = URL.createObjectURL(blob);
-            link.download = `修丽可合规达人资源库_${currentActiveSheet}_${dateSuffix}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            alert("🎉 导出 Excel 成功！");
-        }
-
-        // 密码安全校验清空
-        async function clearDatabaseWithPassword() {
-            const password = prompt("⚠ 警告：该操作将永久从内网公共盘物理擦除全部达人档案！\n请输入安全密码进行清空验证：");
-            if (password === null) return; 
-            
-            if (password !== "1234") {
-                alert("❌ 密码错误，清空操作已被拦截！");
-                return;
-            }
-
-            if (confirm("🚨 是否确定立刻物理抹除全部历史数据？")) {
-                sharedDatabase = [];
-                try {
-                    const writable = await dbHandle.createWritable();
-                    await writable.write(JSON.stringify(sharedDatabase, null, 2));
-                    await writable.close();
-
-                    renderDatabaseTable();
-                    alert("🔴 共享资源库已全部物理清空。");
-                } catch (err) {
-                    alert("操作失败：" + err.message);
-                }
-            }
-        }
-
-        // 渲染已归档数据库
-        function renderDatabaseTable() {
-            dbTableBody.innerHTML = '';
-            
-            if (!dbHandle) {
-                dbTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="10" class="px-6 py-16 text-center text-gray-400 select-none">
-                            <i class="fa-solid fa-lock text-3xl mb-3 block text-gray-300"></i>
-                            公共盘未连接。请先在上方连接授权，即可秒级加载已留存团队共享的达人数据
-                        </td>
-                    </tr>`;
-                return;
-            }
-
-            const filterStatusVal = document.getElementById('filter-status').value;
-            let renderedCount = 0;
-
-            sharedDatabase.forEach((kol, index) => {
-                if (currentActiveSheet !== 'ALL' && kol.product !== currentActiveSheet) return;
-                
-                if (searchKolTags.length > 0) {
-                    const matchesAny = searchKolTags.some(tag => kol.name.toLowerCase().includes(tag.toLowerCase()));
-                    if (!matchesAny) return;
-                }
-
-                const expire = new Date(kol.expireDate);
-                const timeDiff = expire.getTime() - TODAY.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); 
-
-                let statusType = "SAFE";
-                if (kol.isIncomplete) statusType = "INCOMPLETE";
-                else if (daysDiff < 0) statusType = "EXPIRED";
-                else if (daysDiff <= 30) statusType = "WARNING";
-
-                if (filterStatusVal !== "ALL" && statusType !== filterStatusVal) return;
-
-                renderedCount++;
-
-                let statusBadge = "";
-                let rowBgClass = "";
-
-                if (statusType === "INCOMPLETE") {
-                    statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 animate-pulse border border-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>视频不全 (催补中)</span>`;
-                    rowBgClass = "bg-amber-50/10 hover:bg-amber-50/30 transition-colors border-b border-gray-100";
-                } else if (statusType === "EXPIRED") {
-                    statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 animate-pulse"><i class="fa-solid fa-circle-exclamation mr-1"></i>已过期 (禁用)</span>`;
-                    rowBgClass = "bg-red-50/40 opacity-75 hover:bg-red-50 transition-colors border-b border-gray-100";
-                } else if (statusType === "WARNING") {
-                    statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i>临期 (剩 ${daysDiff} 天)</span>`;
-                    rowBgClass = "bg-amber-50/20 hover:bg-amber-50/40 transition-colors border-b border-gray-100";
-                } else {
-                    statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800"><i class="fa-solid fa-shield-halved mr-1"></i>授权中 (安全)</span>`;
-                    rowBgClass = "hover:bg-gray-50/50 transition-colors border-b border-gray-100";
-                }
-
-                // 资源库中头像及右侧一键纠偏机制，支持针对已有纪录进行物理重新固化
-                let avatarHtml = `<div class="w-7 h-7 rounded-full bg-sc-900 border border-gold-500/20 flex items-center justify-center text-[10px] text-gold-500 font-bold mr-2.5 flex-shrink-0"><i class="fa-solid fa-user-check text-[10px]"></i></div>`;
-                if (kol.coverUrl) {
-                    avatarHtml = `
-                        <div class="relative group mr-2.5 flex-shrink-0 flex items-center space-x-1" id="avatar-box-db-${index}">
-                            <div class="relative group cursor-pointer"
-                                 onmousemove="triggerFileHover(event, null, '视频AI截取达人脸封面', true, '${kol.coverUrl}', '共享数据库固化数据通道')"
-                                 onmouseleave="hideFileHover()">
-                                <img src="${kol.coverUrl}" class="w-7 h-7 rounded-full object-cover border border-gold-500 shadow-sm" />
-                                <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 border border-white"></span>
-                            </div>
-                            <button onclick="retriggerDeepScan('db-${index}', ${index})" 
-                                    class="text-[8px] bg-sc-950 text-gold-500 border border-gold-500/30 px-1 py-0.5 rounded font-extrabold hover:bg-gold-500 hover:text-sc-950 transition-all select-none" 
-                                    title="如果是误识别的文字或授权书，点击在本地片源中重新搜索正脸并覆盖落盘">
-                                ⚡重搜
-                            </button>
-                        </div>
-                    `;
-                }
-
-                const row = document.createElement('tr');
-                row.className = rowBgClass;
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap font-bold text-sc-900 flex items-center">
-                        <div class="flex items-center">
-                            ${avatarHtml}
-                            <span class="text-xs font-bold text-sc-950">${kol.name}</span>
-                            ${renderOpinionTagHtml(kol.opinionTag)}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap">
-                        <span class="px-2.5 py-1 text-xs font-bold rounded bg-slate-100 text-slate-700 border border-slate-300/60">${kol.product}</span>
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap font-mono text-gray-500">
-                        ${kol.archiveDate || TODAY_STR}
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap font-bold text-gray-600 bg-gold-50/10">
-                        <i class="fa-regular fa-id-badge mr-1 text-gold-500"></i>${kol.operator || "未知"}
-                    </td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap font-mono font-bold text-xs ${daysDiff < 0 ? 'text-red-600 line-through' : 'text-gray-700'}">${kol.expireDate}</td>
-                    <td class="px-6 py-4 text-center whitespace-nowrap">${statusBadge}</td>
-                    
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-400"
-                        onmousemove="triggerFileHover(event, null, '${kol.pureVideo || '无'}', true, null, '${kol.pureVideoPath || '无'}')"
-                        onmouseleave="hideFileHover()">
-                        ${kol.pureVideo ? `
-                            <div class="flex items-center justify-center space-x-1.5">
-                                <span class="underline decoration-dotted text-gray-600 font-bold cursor-pointer hover:text-gold-500" onclick="copyOriginalPath('${kol.pureVideoPath}', event)">${kol.pureVideo.substring(0, 10)}...</span>
-                                <button onclick="copyOriginalPath('${kol.pureVideoPath}', event)" class="text-slate-400 hover:text-gold-500 transition-all" title="复制本地路径"><i class="fa-solid fa-copy"></i></button>
-                            </div>` : `<span class="text-red-500 font-extrabold flex justify-center items-center"><i class="fa-solid fa-circle-exclamation mr-1"></i>缺纯视频</span>`}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-400"
-                        onmousemove="triggerFileHover(event, null, '${kol.postedVideo || '无'}', true, null, '${kol.postedVideoPath || '无'}')"
-                        onmouseleave="hideFileHover()">
-                        ${kol.postedVideo ? `
-                            <div class="flex items-center justify-center space-x-1.5">
-                                <span class="underline decoration-dotted text-gray-600 font-bold cursor-pointer hover:text-gold-500" onclick="copyOriginalPath('${kol.postedVideoPath}', event)">${kol.postedVideo.substring(0, 10)}...</span>
-                                <button onclick="copyOriginalPath('${kol.postedVideoPath}', event)" class="text-slate-400 hover:text-gold-500 transition-all" title="复制本地路径"><i class="fa-solid fa-copy"></i></button>
-                            </div>` : `<span class="text-red-500 font-extrabold flex justify-center items-center"><i class="fa-solid fa-circle-exclamation mr-1"></i>缺成片</span>`}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap text-gray-400"
-                        onmousemove="triggerFileHover(event, null, '合同授权书一览', true, '${kol.authPreviewBase64 || ''}', '${kol.authFilesPaths ? kol.authFilesPaths.join('; ') : '无'}')"
-                        onmouseleave="hideFileHover()">
-                        ${kol.authFiles && kol.authFiles[0] ? `
-                            <div class="flex items-center justify-center">
-                                <span class="border border-gray-200 bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-bold cursor-pointer hover:border-gold-500 hover:text-gold-500 transition-all" onclick="openArchivedLargePreview('${kol.name}', '${kol.authPreviewBase64 || ''}')">
-                                    📄 共 ${kol.authFiles.length} 份
-                                </span>
-                            </div>` : '无'}
-                    </td>
-
-                    <td class="px-6 py-4 text-center whitespace-nowrap">
-                        <button onclick="deleteKOL(${index})" class="text-red-500 hover:text-red-700 hover:scale-110 transition-all" title="删除"><i class="fa-regular fa-trash-can text-base"></i></button>
-                    </td>
-                `;
-                dbTableBody.appendChild(row);
-            });
-
-            if (renderedCount === 0) {
-                dbTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="10" class="px-6 py-16 text-center text-gray-400 select-none">
-                            <i class="fa-solid fa-filter-circle-xmark text-3xl mb-3 block text-gray-300"></i>
-                            本分类或叠加标签筛选条件下暂无任何匹配的共享留存数据
-                        </td>
-                    </tr>`;
-            }
-        }
-
-        function switchSheet(product) {
-            currentActiveSheet = product;
-
-            const tabs = document.querySelectorAll('#sheet-tabs button');
-            tabs.forEach(btn => {
-                btn.className = "inline-block p-4 border-b-2 rounded-t-lg transition-all text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300";
-            });
-
-            const activeIdMap = {
-                'ALL': 'tab-all',
-                'AGE面霜': 'tab-age-cream',
-                'PTIOX精华': 'tab-ptiox',
-                'AGE家族': 'tab-age-family',
-                'AGE精华': 'tab-age-essence',
-                '银伞防晒': 'tab-umbrella',
-                '色修精华': 'tab-color-essence'
-            };
-            
-            const activeBtn = document.getElementById(activeIdMap[product]);
-            if (activeBtn) {
-                activeBtn.className = "inline-block p-4 border-b-2 rounded-t-lg transition-all sc-active-tab font-bold";
-            }
-
-            renderDatabaseTable();
-        }
-
-        async function deleteKOL(index) {
-            if (confirm('确认要在公共盘共享库中永久移除该达人资源吗？')) {
-                sharedDatabase.splice(index, 1);
-                try {
-                    const writable = await dbHandle.createWritable();
-                    await writable.write(JSON.stringify(sharedDatabase, null, 2));
-                    await writable.close();
-
-                    renderDatabaseTable();
-                    alert("🗑 公共盘共享数据已成功删除并同步。");
-                } catch (err) {
-                    alert("删除失败，请重试：" + err.message);
-                }
-            }
-        }
-
-        // 终极排查修复：文件上传触发器绑定与内存释放
-        folderInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                handleLocalFolder(e.target.files);
-                this.value = ''; // 极其重要：在处理完文件流后瞬间清空缓存值
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                setPromoMenu(false);
             }
         });
 
-        zipInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                handleZipFile(e.target.files[0]);
-                this.value = ''; // 极其重要：解压完瞬间清空
-            }
+        const modeToggle = document.getElementById("modeToggle");
+        modeToggle.addEventListener("click", () => {
+            focusMode = !focusMode;
+            document.body.classList.toggle("focus-mode", focusMode);
+            modeToggle.setAttribute("aria-pressed", String(focusMode));
         });
+
+        const toast = document.getElementById("toast");
+        let toastTimer = 0;
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add("is-visible");
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2300);
+        }
+
+        if (window.lucide) {
+            window.lucide.createIcons({
+                attrs: {
+                    "stroke-width": 1.75,
+                    width: 18,
+                    height: 18
+                }
+            });
+        }
     </script>
 </body>
 </html>
