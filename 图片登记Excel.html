@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图片信息批量导出Excel</title>
+    <style>
+        body {
+            font-family: "微软雅黑";
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+        }
+        .btn {
+            padding: 12px 30px;
+            margin: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .btn:hover {
+            background: #337ecc;
+        }
+        .tip {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+    <!-- 纯前端Excel库，无需安装，浏览器直接加载 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h2>🎁 赠品图片信息批量导出Excel</h2>
+    <p class="tip">1. 点击下方按钮批量选择图片<br>2. 自动提取code和赠品名称<br>3. 一键导出Excel表格</p>
+
+    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+    <button class="btn" onclick="document.getElementById('fileInput').click()">📁 选择所有图片</button>
+    <button class="btn" onclick="exportExcel()">📊 导出Excel表格</button>
+
+    <script>
+        let fileList = [];
+        const fileInput = document.getElementById('fileInput');
+
+        // 监听选择的图片
+        fileInput.onchange = function (e) {
+            fileList = Array.from(e.target.files);
+            if (fileList.length > 0) {
+                alert(`✅ 已选择 ${fileList.length} 张图片`);
+            }
+        };
+
+        // 导出Excel核心函数
+        function exportExcel() {
+            if (fileList.length === 0) {
+                alert("❌ 请先选择图片！");
+                return;
+            }
+
+            // 整理数据
+            const data = [
+                ['code', '赠品名称'] // 表头，和你的需求完全一致
+            ];
+
+            fileList.forEach(file => {
+                // 获取文件名（无后缀）
+                const fullName = file.name.substring(0, file.name.lastIndexOf('.'));
+                let code = '';
+                const giftName = fullName;
+
+                // 提取_前面的序列号（只分割第一个下划线，兼容名称含多个下划线）
+                if (fullName.includes('_')) {
+                    code = fullName.split('_')[0];
+                } else {
+                    code = '无编码';
+                }
+
+                data.push([code, giftName]);
+            });
+
+            // 生成Excel工作表
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "赠品信息");
+
+            // 下载文件
+            XLSX.writeFile(wb, "赠品信息登记表.xlsx");
+        }
+    </script>
+</body>
+</html>

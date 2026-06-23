@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传Excel并解析</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label, input, button, select {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #sizeCustomerMapping {
+            width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>上传Excel文件并解析</h1>
+    <label for="excelFile">上传Excel文件：</label>
+    <input type="file" id="excelFile" accept=".xlsx, .xls">
+    <button id="parseButton">解析Excel</button>
+    <div id="sizeCustomerMapping"></div>
+    <label for="imageFiles">上传图片：</label>
+    <input type="file" id="imageFiles" accept="image/*" multiple>
+    <div id="imageDimensions"></div>
+    <label for="rootDirectory">图片保存根目录：</label>
+    <button id="selectRootDirButton">选择根目录</button>
+    <span id="rootDirPath"></span>
+    <button id="saveImagesButton">保存图片</button>
+    <p id="result"></p>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.0/dist/xlsx.full.min.js"></script>
+    <script>
+        let json = [];
+        let rootDirectory;
+
+        document.getElementById('parseButton').addEventListener('click', function() {
+            const excelFileInput = document.getElementById('excelFile');
+            const result = document.getElementById('result');
+
+            if (!excelFileInput.files.length) {
+                result.textContent = '请先选择上传Excel文件。';
+                return;
+            }
+
+            const excelFile = excelFileInput.files[0];
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                json = parseExcel(sheet);
+
+                const sizeCustomerMapping = document.getElementById('sizeCustomerMapping');
+                sizeCustomerMapping.innerHTML = '';
+
+                const sizeToCustomers = new Map();
+                json.forEach(row => {
+                    const customer = row[0].trim(); // 去掉空格
+                    const size = row[1].trim(); // 去掉空格
+                    if (!sizeToCustomers.has(size)) {
+                        sizeToCustomers.set(size, []);
+                    }
+                    sizeToCustomers.get(size).push(customer);
+                });
+
+                sizeToCustomers.forEach((customers, size) => {
+                    const p = document.createElement('p');
+                    p.textContent = `${size.replace(/\*/g, '_')}: ${customers.join(', ')}`;
+                    sizeCustomerMapping.appendChild(p);
+                });
+
+                result.textContent = 'Excel解析完成。';
+            };
+            reader.readAsArrayBuffer(excelFile);
+        });
+
+        document.getElementById('imageFiles').addEventListener('change', function(event) {
+            const imageFiles = Array.from(event.target.files);
+            const imageDimensions = document.getElementById('imageDimensions');
+            imageDimensions.innerHTML = '';
+
+            imageFiles.forEach(file => {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.onload = function() {
+                    const dimensions = document.createElement('p');
+                    dimensions.textContent = `${file.name}: ${img.width}x${img.height}px`;
+                    imageDimensions.appendChild(dimensions);
+                    URL.revokeObjectURL(img.src);
+                };
+            });
+        });
+
+        document.getElementById('selectRootDirButton').addEventListener('click', async function() {
+            try {
+                rootDirectory = await window.showDirectoryPicker();
+                document.getElementById('rootDirPath').textContent = rootDirectory.name;
+            } catch (error) {
+                console.error('Error selecting root directory:', error);
+            }
+        });
+
+        document.getElementById('saveImagesButton').addEventListener('click', async function() {
+            const imageFilesInput = document.getElementById('imageFiles');
+            const result = document.getElementById('result');
+
+            if (!imageFilesInput.files.length) {
+                result.textContent = '请先选择上传图片。';
+                return;
+            }
+
+            if (!rootDirectory) {
+                result.textContent = '请先选择图片保存根目录。';
+                return;
+            }
+
+            try {
+                const imageFiles = Array.from(imageFilesInput.files);
+
+                for (const file of imageFiles) {
+                    const sizeMatch = file.name.match(/(\d+_\d+)/);
+                    if (sizeMatch) {
+                        const size = sizeMatch[1].replace('_', '*');
+                        const customers = findCustomersForSize(json, size);
+                        for (const customer of customers) {
+                            const sanitizedCustomerName = sanitizeName(customer);
+                            console.log(`Attempting to create folder for: ${sanitizedCustomerName}`);
+
+                            const customerFolder = await getOrCreateFolder(rootDirectory, sanitizedCustomerName);
+                            console.log(`Folder created or accessed: ${sanitizedCustomerName}`);
+
+                            await saveImageToFolder(file, customerFolder);
+                        }
+                    }
+                }
+                result.textContent = '图片保存完成。';
+            } catch (error) {
+                result.textContent = '保存图片时出错。';
+                console.error('Error saving images:', error);
+            }
+        });
+
+        function sanitizeName(name) {
+            return name.replace(/[<>:"\/\\|?*]+/g, '_') // 替换常见非法字符
+                       .replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, '_') // 替换全角标点
+                       .replace(/[（）“”《》，。]/g, '_') // 替换中文标点
+                       .replace(/[(){}[\]]/g, '_') // 替换其他括号
+                       .replace(/[\s]+/g, '_'); // 替换空格为下划线
+        }
+
+        async function getOrCreateFolder(root, folderName) {
+            try {
+                return await root.getDirectoryHandle(folderName, { create: true });
+            } catch (error) {
+                console.error('Error creating folder:', error);
+                throw error;
+            }
+        }
+
+        async function saveImageToFolder(imageFile, folderHandle) {
+            try {
+                const fileHandle = await folderHandle.getFileHandle(imageFile.name, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(await imageFile.arrayBuffer());
+                await writable.close();
+            } catch (error) {
+                console.error('Error saving image:', error);
+            }
+        }
+
+        function parseExcel(sheet) {
+            const range = XLSX.utils.decode_range(sheet['!ref']);
+            const result = [];
+
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) { // 忽略表头
+                const row = [];
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = { r: R, c: C };
+                    const cellRef = XLSX.utils.encode_cell(cellAddress);
+                    const cell = sheet[cellRef];
+                    let value = cell ? cell.v : undefined;
+
+                    if (sheet['!merges']) {
+                        sheet['!merges'].forEach(merge => {
+                            if (merge.s.r <= R && R <= merge.e.r && merge.s.c <= C && C <= merge.e.c) {
+                                const startCellRef = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+                                value = sheet[startCellRef].v;
+                            }
+                        });
+                    }
+
+                    row.push(value !== undefined ? value : '');
+                }
+
+                result.push(row);
+            }
+
+            return result;
+        }
+
+        function findCustomersForSize(data, size) {
+            const customers = [];
+            data.forEach(row => {
+                if (row[1].trim() === size) { // 去掉空格进行匹配
+                    customers.push(row[0].trim());
+                }
+            });
+            return customers;
+        }
+    </script>
+</body>
+</html>

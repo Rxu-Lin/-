@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片拼图工具 - 专业版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            overflow: hidden;
+            color: #e0e0e0;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+            color: #ffffff;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .zoom-controls button {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,212,255,0.3);
+        }
+
+        .zoom-controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,212,255,0.5);
+        }
+
+        .zoom-controls span {
+            color: #ffffff;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            padding: 20px;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+            background: linear-gradient(180deg, #1e1e1e 0%, #252525 100%);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            border-radius: 3px;
+        }
+
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area:hover {
+            background: rgba(0,212,255,0.05);
+            border-color: #00d4ff;
+            box-shadow: 0 0 30px rgba(0,212,255,0.2);
+        }
+
+        .upload-area.drag-over {
+            background: rgba(0,212,255,0.1);
+            border-color: #00d4ff;
+            box-shadow: 0 0 40px rgba(0,212,255,0.3);
+        }
+
+        .upload-area div {
+            font-size: 48px;
+            margin-bottom: 10px;
+            filter: grayscale(0.5);
+        }
+
+        .upload-area p {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .control-group {
+            margin-top: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2ff7 100%);
+            outline: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,212,255,0.5);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0,212,255,0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: #ccc;
+            border: 1px solid #444;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #666;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0,255,136,0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0,255,136,0.5);
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #444;
+            background: rgba(255,255,255,0.02);
+            color: #999;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn:hover {
+            border-color: #666;
+            color: #ccc;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+        }
+
+        .image-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .image-item:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(5px);
+        }
+
+        .image-item.selected {
+            background: rgba(0,255,136,0.1);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0,255,136,0.2);
+        }
+
+        .image-item.dragging {
+            opacity: 0.5;
+            background: rgba(0,212,255,0.2);
+        }
+
+        .image-item.drag-over {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.1);
+        }
+
+        .image-item.drag-over::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2ff7 100%);
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(0,212,255,0.5);
+        }
+
+        .image-item img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-right: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .image-item .order {
+            font-weight: bold;
+            color: #00d4ff;
+            margin-right: 10px;
+            min-width: 20px;
+            text-align: center;
+            font-size: 14px;
+            text-shadow: 0 0 10px rgba(0,212,255,0.5);
+        }
+
+        .image-item .name {
+            flex: 1;
+            font-size: 12px;
+            color: #999;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .image-item .remove {
+            padding: 5px 8px;
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(255,71,87,0.3);
+        }
+
+        .image-item .remove:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(255,71,87,0.5);
+        }
+
+        .preview-area {
+            flex: 1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            position: relative;
+        }
+
+        #previewCanvas {
+            position: absolute;
+            background: #151515;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+            border: 1px solid #333;
+            cursor: move;
+        }
+
+        .snap-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .snap-line.show {
+            opacity: 1;
+        }
+
+        .snap-line.horizontal {
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2ff7 100%);
+            box-shadow: 0 0 20px rgba(0,212,255,0.8);
+        }
+
+        .snap-line.vertical {
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, #00d4ff 0%, #7b2ff7 100%);
+            box-shadow: 0 0 20px rgba(0,212,255,0.8);
+        }
+
+        .selection-info {
+            background: rgba(0,255,136,0.1);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #00ff88;
+            backdrop-filter: blur(10px);
+        }
+
+        .selection-info strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .image-list {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 图片拼图工具 Pro</h1>
+            <div class="header-controls">
+                <div class="zoom-controls">
+                    <button onclick="zoomOut()">−</button>
+                    <span id="zoomLevel">100%</span>
+                    <button onclick="zoomIn()">+</button>
+                    <button onclick="zoomFit()" style="font-size: 11px; padding: 6px 10px;">适应</button>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="upload-area" id="uploadArea">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📁</div>
+                    <p style="font-size: 14px;">点击或拖拽上传图片</p>
+                </div>
+                <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+
+                <div class="control-group">
+                    <label>布局模式</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" data-layout="free">自由</button>
+                        <button class="toggle-btn" data-layout="horizontal">横向</button>
+                        <button class="toggle-btn" data-layout="vertical">纵向</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>图片间隙: <span id="gapValue">10</span>px</label>
+                    <input type="range" id="gapRange" min="0" max="50" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label>统一圆角: <span id="radiusValue">0</span>px</label>
+                    <input type="range" id="radiusRange" min="0" max="50" value="0">
+                </div>
+
+                <div class="control-group">
+                    <label>吸附距离: <span id="snapValue">10</span>px</label>
+                    <input type="range" id="snapRange" min="5" max="30" value="10">
+                </div>
+
+                <button class="btn btn-success" id="alignHBtn">⬅️ 横向对齐</button>
+                <button class="btn btn-success" id="alignVBtn">⬆️ 纵向对齐</button>
+                <button class="btn btn-primary" id="exportBtn">💾 导出图片</button>
+                <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
+                <button class="btn btn-secondary" id="selectAllBtn">☑️ 全选/取消</button>
+
+                <div id="selectionInfo" class="selection-info" style="display: none;">
+                    <strong>已选中 <span id="selectedCount">0</span> 张图片</strong>
+                    <span style="font-size: 11px;">按住 Shift 点击可多选</span>
+                </div>
+
+                <div class="image-list" id="imageList"></div>
+            </div>
+
+            <div class="preview-area" id="previewArea">
+                <canvas id="previewCanvas"></canvas>
+                <div class="snap-line horizontal" id="snapLineH"></div>
+                <div class="snap-line vertical" id="snapLineV"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadedImages = [];
+        let layout = 'free';
+        let gap = 10;
+        let globalRadius = 0;
+        let snapDistance = 10;
+        let zoom = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        let isDragging = false;
+        let dragImageIndex = -1;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        let selectedImages = new Set();
+        let dragFromIndex = -1;
+        const undoHistory = [];
+        const maxHistorySize = 50;
+
+        function saveState() {
+            const state = JSON.parse(JSON.stringify(uploadedImages.map(item => ({
+                name: item.name,
+                radius: item.radius,
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                imgSrc: item.img.src
+            }))));
+
+            undoHistory.push(state);
+            if (undoHistory.length > maxHistorySize) {
+                undoHistory.shift();
+            }
+        }
+
+        function undo() {
+            if (undoHistory.length === 0) return;
+
+            const state = undoHistory.pop();
+            uploadedImages.length = 0;
+
+            let loadIndex = 0;
+            function loadNextImage() {
+                if (loadIndex >= state.length) {
+                    selectedImages.clear();
+                    updateImageList();
+                    renderPreview();
+                    return;
+                }
+
+                const item = state[loadIndex];
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImages.push({
+                        img,
+                        name: item.name,
+                        radius: item.radius,
+                        x: item.x,
+                        y: item.y,
+                        width: item.width,
+                        height: item.height
+                    });
+                    loadIndex++;
+                    loadNextImage();
+                };
+                img.src = item.imgSrc;
+            }
+            loadNextImage();
+        }
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const gapRange = document.getElementById('gapRange');
+        const radiusRange = document.getElementById('radiusRange');
+        const snapRange = document.getElementById('snapRange');
+        const gapValue = document.getElementById('gapValue');
+        const radiusValue = document.getElementById('radiusValue');
+        const snapValue = document.getElementById('snapValue');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const ctx = previewCanvas.getContext('2d');
+        const imageList = document.getElementById('imageList');
+        const previewArea = document.getElementById('previewArea');
+        const zoomLevel = document.getElementById('zoomLevel');
+        const selectionInfo = document.getElementById('selectionInfo');
+        const selectedCount = document.getElementById('selectedCount');
+        const snapLineH = document.getElementById('snapLineH');
+        const snapLineV = document.getElementById('snapLineV');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        });
+
+        function handleFiles(files) {
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        uploadedImages.push({
+                            img,
+                            name: file.name,
+                            radius: 0,
+                            x: 100 + Math.random() * 200,
+                            y: 100 + Math.random() * 200,
+                            width: img.width,
+                            height: img.height
+                        });
+                        updateImageList();
+                        renderPreview();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updateImageList() {
+            imageList.innerHTML = '';
+            uploadedImages.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'image-item' + (selectedImages.has(index) ? ' selected' : '');
+                div.draggable = true;
+                div.dataset.index = index;
+                div.innerHTML = `
+                    <span class="order">${index + 1}</span>
+                    <img src="${item.img.src}" alt="${item.name}">
+                    <span class="name">${item.name}</span>
+                    <button class="remove" onclick="removeImage(${index})">✕</button>
+                `;
+
+                div.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('remove')) {
+                        e.stopPropagation();
+                        toggleSelection(index, e.shiftKey);
+                    }
+                });
+
+                div.addEventListener('dragstart', (e) => {
+                    dragFromIndex = index;
+                    div.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', index);
+                });
+
+                div.addEventListener('dragend', (e) => {
+                    div.classList.remove('dragging');
+                    document.querySelectorAll('.image-item').forEach(item => {
+                        item.classList.remove('drag-over', 'drag-over-bottom');
+                    });
+                    dragFromIndex = -1;
+                });
+
+                div.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+
+                    document.querySelectorAll('.image-item').forEach(item => {
+                        item.classList.remove('drag-over', 'drag-over-bottom');
+                    });
+
+                    const rect = div.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+
+                    if (e.clientY < midY) {
+                        div.classList.add('drag-over');
+                    } else {
+                        div.classList.add('drag-over', 'drag-over-bottom');
+                    }
+                });
+
+                div.addEventListener('dragleave', (e) => {
+                    div.classList.remove('drag-over', 'drag-over-bottom');
+                });
+
+                div.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const fromIndex = dragFromIndex;
+                    const toDiv = e.target.closest('.image-item');
+                    if (!toDiv) return;
+
+                    const rect = toDiv.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    let toIndex = parseInt(toDiv.dataset.index);
+
+                    if (e.clientY >= midY) {
+                        toIndex = toIndex + 1;
+                    }
+
+                    if (fromIndex !== toIndex && fromIndex >= 0) {
+                        saveState();
+                        const [moved] = uploadedImages.splice(fromIndex, 1);
+                        const adjustedToIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+                        uploadedImages.splice(adjustedToIndex, 0, moved);
+                        updateImageList();
+                        renderPreview();
+                    }
+                });
+
+                imageList.appendChild(div);
+            });
+        }
+
+        function toggleSelection(index, isMultiSelect) {
+            if (!isMultiSelect) {
+                selectedImages.clear();
+            }
+
+            if (selectedImages.has(index)) {
+                selectedImages.delete(index);
+            } else {
+                selectedImages.add(index);
+            }
+
+            updateSelectionDisplay();
+            updateImageList();
+            renderPreview();
+        }
+
+        function updateSelectionDisplay() {
+            if (selectedImages.size > 0) {
+                selectionInfo.style.display = 'block';
+                selectedCount.textContent = selectedImages.size;
+            } else {
+                selectionInfo.style.display = 'none';
+            }
+        }
+
+        function removeImage(index) {
+            saveState();
+            uploadedImages.splice(index, 1);
+            selectedImages.clear();
+            updateImageList();
+            updateSelectionDisplay();
+            renderPreview();
+        }
+
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                layout = btn.dataset.layout;
+                if (layout !== 'free') {
+                    autoLayout();
+                }
+                renderPreview();
+            });
+        });
+
+        gapRange.addEventListener('input', (e) => {
+            gap = parseInt(e.target.value);
+            gapValue.textContent = gap;
+            if (layout !== 'free') {
+                autoLayout();
+            }
+            renderPreview();
+        });
+
+        radiusRange.addEventListener('input', (e) => {
+            globalRadius = parseInt(e.target.value);
+            radiusValue.textContent = globalRadius;
+            uploadedImages.forEach(item => {
+                item.radius = globalRadius;
+            });
+            renderPreview();
+        });
+
+        snapRange.addEventListener('input', (e) => {
+            snapDistance = parseInt(e.target.value);
+            snapValue.textContent = snapDistance;
+        });
+
+        function autoLayout() {
+            if (uploadedImages.length === 0) return;
+
+            let x = 10;
+            let y = 10;
+
+            uploadedImages.forEach(item => {
+                if (layout === 'horizontal') {
+                    item.x = x;
+                    const maxHeight = Math.max(...uploadedImages.map(i => i.height));
+                    item.y = 10 + (maxHeight - item.height) / 2;
+                    x += item.width + gap;
+                } else if (layout === 'vertical') {
+                    item.x = 10;
+                    item.y = y;
+                    y += item.height + gap;
+                }
+            });
+        }
+
+        function alignHorizontal() {
+            if (selectedImages.size === 0) {
+                alert('请先选择图片（点击图片或使用Shift+点击多选）');
+                return;
+            }
+
+            saveState();
+            const selectedIndices = Array.from(selectedImages);
+
+            let totalWidth = 0;
+            let maxHeight = 0;
+
+            selectedIndices.forEach(index => {
+                const item = uploadedImages[index];
+                totalWidth += item.width;
+                maxHeight = Math.max(maxHeight, item.height);
+            });
+
+            totalWidth += gap * (selectedIndices.length - 1);
+
+            let x = 10;
+            let y = 10;
+
+            if (selectedIndices.length > 0) {
+                y = uploadedImages[selectedIndices[0]].y;
+            }
+
+            selectedIndices.forEach(index => {
+                const item = uploadedImages[index];
+                item.x = x;
+                item.y = y + (maxHeight - item.height) / 2;
+                x += item.width + gap;
+            });
+
+            renderPreview();
+        }
+
+        function alignVertical() {
+            if (selectedImages.size === 0) {
+                alert('请先选择图片（点击图片或使用Shift+点击多选）');
+                return;
+            }
+
+            saveState();
+            const selectedIndices = Array.from(selectedImages);
+
+            let maxWidth = 0;
+            let totalHeight = 0;
+
+            selectedIndices.forEach(index => {
+                const item = uploadedImages[index];
+                maxWidth = Math.max(maxWidth, item.width);
+                totalHeight += item.height;
+            });
+
+            totalHeight += gap * (selectedIndices.length - 1);
+
+            let x = 10;
+            let y = 10;
+
+            if (selectedIndices.length > 0) {
+                x = uploadedImages[selectedIndices[0]].x;
+            }
+
+            selectedIndices.forEach(index => {
+                const item = uploadedImages[index];
+                item.x = x + (maxWidth - item.width) / 2;
+                item.y = y;
+                y += item.height + gap;
+            });
+
+            renderPreview();
+        }
+
+        function renderPreview() {
+            if (uploadedImages.length === 0) {
+                previewCanvas.width = 0;
+                previewCanvas.height = 0;
+                return;
+            }
+
+            const padding = 10;
+            let totalWidth = padding * 2;
+            let totalHeight = padding * 2;
+
+            if (layout === 'horizontal') {
+                totalWidth = uploadedImages.reduce((sum, item) => sum + item.width, 0) + gap * (uploadedImages.length - 1) + padding * 2;
+                totalHeight = Math.max(...uploadedImages.map(item => item.height)) + padding * 2;
+            } else if (layout === 'vertical') {
+                totalWidth = Math.max(...uploadedImages.map(item => item.width)) + padding * 2;
+                totalHeight = uploadedImages.reduce((sum, item) => sum + item.height, 0) + gap * (uploadedImages.length - 1) + padding * 2;
+            } else {
+                const leftEdge = Math.min(...uploadedImages.map(item => item.x));
+                const topEdge = Math.min(...uploadedImages.map(item => item.y));
+                const rightEdge = Math.max(...uploadedImages.map(item => item.x + item.width));
+                const bottomEdge = Math.max(...uploadedImages.map(item => item.y + item.height));
+
+                totalWidth = rightEdge + padding;
+                totalHeight = bottomEdge + padding;
+
+                if (leftEdge < padding) {
+                    const offsetX = padding - leftEdge;
+                    uploadedImages.forEach(item => item.x += offsetX);
+                }
+                if (topEdge < padding) {
+                    const offsetY = padding - topEdge;
+                    uploadedImages.forEach(item => item.y += offsetY);
+                }
+
+                const newRightEdge = Math.max(...uploadedImages.map(item => item.x + item.width));
+                const newBottomEdge = Math.max(...uploadedImages.map(item => item.y + item.height));
+
+                totalWidth = newRightEdge + padding;
+                totalHeight = newBottomEdge + padding;
+            }
+
+            previewCanvas.width = totalWidth;
+            previewCanvas.height = totalHeight;
+            previewCanvas.style.left = '50%';
+            previewCanvas.style.top = '50%';
+
+            ctx.clearRect(0, 0, totalWidth, totalHeight);
+
+            uploadedImages.forEach((item, index) => {
+                ctx.save();
+
+                if (item.radius > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(item.x + item.radius, item.y);
+                    ctx.lineTo(item.x + item.width - item.radius, item.y);
+                    ctx.quadraticCurveTo(item.x + item.width, item.y, item.x + item.width, item.y + item.radius);
+                    ctx.lineTo(item.x + item.width, item.y + item.height - item.radius);
+                    ctx.quadraticCurveTo(item.x + item.width, item.y + item.height, item.x + item.width - item.radius, item.y + item.height);
+                    ctx.lineTo(item.x + item.radius, item.y + item.height);
+                    ctx.quadraticCurveTo(item.x, item.y + item.height, item.x, item.y + item.height - item.radius);
+                    ctx.lineTo(item.x, item.y + item.radius);
+                    ctx.quadraticCurveTo(item.x, item.y, item.x + item.radius, item.y);
+                    ctx.closePath();
+                    ctx.clip();
+                }
+
+                ctx.drawImage(item.img, item.x, item.y, item.width, item.height);
+                ctx.restore();
+
+                if (selectedImages.has(index)) {
+                    ctx.strokeStyle = '#00ff88';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(item.x - 2, item.y - 2, item.width + 4, item.height + 4);
+                    ctx.setLineDash([]);
+                }
+
+                if (index === dragImageIndex) {
+                    ctx.strokeStyle = '#00d4ff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x - 1, item.y - 1, item.width + 2, item.height + 2);
+                }
+            });
+
+            updateCanvasTransform();
+        }
+
+        function showSnapLine(x, y, isHorizontal) {
+            if (isHorizontal) {
+                snapLineH.style.top = (y * zoom + panY) + 'px';
+                snapLineH.classList.add('show');
+            } else {
+                snapLineV.style.left = (x * zoom + panX) + 'px';
+                snapLineV.classList.add('show');
+            }
+        }
+
+        function hideSnapLines() {
+            snapLineH.classList.remove('show');
+            snapLineV.classList.remove('show');
+        }
+
+        function updateCanvasTransform() {
+            previewCanvas.style.transform = `translate(-50%, -50%) translate(${panX}px, ${panY}px) scale(${zoom})`;
+        }
+
+        function zoomIn() {
+            zoom = Math.min(zoom * 1.2, 5);
+            zoomLevel.textContent = Math.round(zoom * 100) + '%';
+            updateCanvasTransform();
+        }
+
+        function zoomOut() {
+            zoom = Math.max(zoom / 1.2, 0.1);
+            zoomLevel.textContent = Math.round(zoom * 100) + '%';
+            updateCanvasTransform();
+        }
+
+        function zoomFit() {
+            if (uploadedImages.length === 0) return;
+
+            const rect = previewArea.getBoundingClientRect();
+            const scaleX = (rect.width - 40) / previewCanvas.width;
+            const scaleY = (rect.height - 40) / previewCanvas.height;
+            zoom = Math.min(scaleX, scaleY, 1);
+
+            panX = 0;
+            panY = 0;
+
+            zoomLevel.textContent = Math.round(zoom * 100) + '%';
+            updateCanvasTransform();
+        }
+
+        previewArea.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        }, { passive: false });
+
+        previewCanvas.addEventListener('mousedown', (e) => {
+            const rect = previewCanvas.getBoundingClientRect();
+            const scaleX = previewCanvas.width / rect.width;
+            const scaleY = previewCanvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+
+            for (let i = uploadedImages.length - 1; i >= 0; i--) {
+                const item = uploadedImages[i];
+                if (mouseX >= item.x && mouseX <= item.x + item.width &&
+                    mouseY >= item.y && mouseY <= item.y + item.height) {
+                    isDragging = true;
+                    dragImageIndex = i;
+                    dragOffsetX = mouseX - item.x;
+                    dragOffsetY = mouseY - item.y;
+                    previewCanvas.style.cursor = 'grabbing';
+
+                    saveState();
+                    toggleSelection(i, e.shiftKey);
+
+                    renderPreview();
+                    break;
+                }
+            }
+        });
+
+        previewArea.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                panX = e.clientX - startPanX;
+                panY = e.clientY - startPanY;
+                updateCanvasTransform();
+                return;
+            }
+
+            if (isDragging && dragImageIndex >= 0) {
+                const rect = previewCanvas.getBoundingClientRect();
+                const scaleX = previewCanvas.width / rect.width;
+                const scaleY = previewCanvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+
+                let newX = mouseX - dragOffsetX;
+                let newY = mouseY - dragOffsetY;
+
+                if (layout === 'horizontal') {
+                    newY = uploadedImages[dragImageIndex].y;
+                } else if (layout === 'vertical') {
+                    newX = uploadedImages[dragImageIndex].x;
+                } else {
+                    const snapped = snapToOthers(dragImageIndex, newX, newY);
+                    newX = snapped.x;
+                    newY = snapped.y;
+                }
+
+                uploadedImages[dragImageIndex].x = newX;
+                uploadedImages[dragImageIndex].y = newY;
+
+                renderPreview();
+            }
+        });
+
+        previewArea.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                dragImageIndex = -1;
+                previewCanvas.style.cursor = 'move';
+                hideSnapLines();
+                renderPreview();
+            }
+            isPanning = false;
+            previewArea.style.cursor = 'default';
+        });
+
+        function snapToOthers(dragIndex, x, y) {
+            const item = uploadedImages[dragIndex];
+            let snappedX = x;
+            let snappedY = y;
+            let hasSnappedX = false;
+            let hasSnappedY = false;
+
+            uploadedImages.forEach((other, index) => {
+                if (index === dragIndex) return;
+
+                if (Math.abs(x + item.width - other.x) < snapDistance) {
+                    snappedX = other.x - item.width;
+                    hasSnappedX = true;
+                }
+                if (Math.abs(x - (other.x + other.width)) < snapDistance) {
+                    snappedX = other.x + other.width;
+                    hasSnappedX = true;
+                }
+                if (Math.abs(y + item.height - other.y) < snapDistance) {
+                    snappedY = other.y - item.height;
+                    hasSnappedY = true;
+                }
+                if (Math.abs(y - (other.y + other.height)) < snapDistance) {
+                    snappedY = other.y + other.height;
+                    hasSnappedY = true;
+                }
+
+                if (Math.abs(x - other.x) < snapDistance) {
+                    snappedX = other.x;
+                    hasSnappedX = true;
+                }
+                if (Math.abs(y - other.y) < snapDistance) {
+                    snappedY = other.y;
+                    hasSnappedY = true;
+                }
+            });
+
+            if (hasSnappedX || hasSnappedY) {
+                showSnapLine(hasSnappedX ? snappedX : x, hasSnappedY ? snappedY : y, hasSnappedY);
+            }
+
+            return { x: snappedX, y: snappedY };
+        }
+
+        previewArea.addEventListener('mousedown', (e) => {
+            if (e.target === previewArea) {
+                isPanning = true;
+                startPanX = e.clientX - panX;
+                startPanY = e.clientY - panY;
+                previewArea.style.cursor = 'grabbing';
+
+                if (!e.shiftKey) {
+                    selectedImages.clear();
+                    updateSelectionDisplay();
+                    updateImageList();
+                    renderPreview();
+                }
+            }
+        });
+
+        document.getElementById('alignHBtn').addEventListener('click', () => {
+            alignHorizontal();
+        });
+
+        document.getElementById('alignVBtn').addEventListener('click', () => {
+            alignVertical();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = previewCanvas.width;
+            exportCanvas.height = previewCanvas.height;
+            const exportCtx = exportCanvas.getContext('2d');
+
+            exportCtx.fillStyle = '#ffffff';
+            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+            exportCtx.drawImage(previewCanvas, 0, 0);
+
+            const link = document.createElement('a');
+            link.download = `collage_${Date.now()}.png`;
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            saveState();
+            uploadedImages.length = 0;
+            selectedImages.clear();
+            gap = 10;
+            globalRadius = 0;
+            snapDistance = 10;
+            gapRange.value = 10;
+            radiusRange.value = 0;
+            snapRange.value = 10;
+            gapValue.textContent = '10';
+            radiusValue.textContent = '0';
+            snapValue.textContent = '10';
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            zoomLevel.textContent = '100%';
+            updateImageList();
+            updateSelectionDisplay();
+            renderPreview();
+        });
+
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            saveState();
+            if (selectedImages.size === uploadedImages.length) {
+                selectedImages.clear();
+            } else {
+                uploadedImages.forEach((_, index) => {
+                    selectedImages.add(index);
+                });
+            }
+            updateSelectionDisplay();
+            updateImageList();
+            renderPreview();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        zoomFit();
+    </script>
+</body>
+</html>

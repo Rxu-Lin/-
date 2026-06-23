@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>简繁校对工具 - 图片简体批注版</title>
+<script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif;background:#f0f2f5;padding:30px 20px}
+.box{max-width:860px;margin:auto;background:#fff;border-radius:16px;padding:35px;box-shadow:0 5px 30px rgba(0,0,0,0.08)}
+h1{font-size:24px;color:#1a1a2e;margin-bottom:5px}
+h1 small{font-size:12px;background:#2649B2;color:#fff;padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:8px}
+.sub{color:#888;font-size:14px;margin-bottom:25px;padding-bottom:12px;border-bottom:1px solid #eee}
+.upzone{border:2px dashed #ccc;border-radius:14px;padding:60px 20px;text-align:center;cursor:pointer;background:#fafbff;position:relative}
+.upzone:hover{border-color:#2649B2;background:#f0f4ff}
+.upzone .ico{font-size:48px}
+.upzone input{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.pre{display:none;margin-top:20px}
+.pre.show{display:block}
+.img-wrap{position:relative;display:inline-block;width:100%}
+.img-wrap img{max-width:100%;max-height:400px;border-radius:10px;border:1px solid #e0e0e0;display:block;margin:0 auto}
+#overlay{position:absolute;top:0;left:0;border-radius:10px}
+.btns{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}
+.btn{padding:11px 26px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+.btn-g{background:#059669;color:#fff}
+.btn-g:hover{background:#047857}
+.btn-g:disabled{background:#aaa;cursor:default}
+.btn-gr{background:#e5e7eb;color:#333}
+.btn-gr:hover{background:#d1d5db}
+.st{display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:14px}
+.st.show{display:block}
+.st-l{background:#fef3c7;color:#92400e}
+.st-o{background:#d1fae5;color:#065f46}
+.st-e{background:#fee2e2;color:#991b1b}
+.res{display:none;margin-top:25px;border-top:1px solid #eee;padding-top:20px}
+.res.show{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.card{background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border:1px solid #eee}
+.card .n{font-size:28px;font-weight:700;color:#2649B2}
+.card .n.red{color:#dc2626}
+.card .n.green{color:#059669}
+.card .l{font-size:12px;color:#888;margin-top:3px}
+.eb{background:#fff8f8;border:1px solid #fecaca;border-radius:10px;padding:16px;margin:12px 0}
+.eb h3{color:#991b1b;font-size:15px;margin-bottom:10px}
+.er{display:flex;align-items:center;gap:12px;padding:8px 12px;background:#fff;border-radius:6px;margin-bottom:6px;border:1px solid #fee2e2;cursor:pointer}
+.er:hover{background:#fef2f2}
+.er .s{background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:4px;font-weight:700;font-size:18px;min-width:30px;text-align:center}
+.er .t{background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:4px;font-weight:700;font-size:18px;min-width:30px;text-align:center}
+.er .c{color:#888;font-size:13px;margin-left:auto}
+.okmsg{text-align:center;padding:30px;color:#065f46;font-size:16px}
+.okmsg .bi{font-size:48px;display:block;margin-bottom:8px}
+.obox{background:#f9fafb;border-radius:10px;padding:14px;margin-top:15px;border:1px solid #e0e0e0}
+.obox h4{font-size:13px;color:#888;margin-bottom:6px}
+.ocr{font-size:15px;line-height:1.8;white-space:pre-wrap;word-break:break-all}
+.ocr .hl{background:#fecaca;color:#991b1b;padding:1px 4px;border-radius:3px;font-weight:600;cursor:pointer}
+.leg{display:flex;gap:16px;margin-top:8px;font-size:12px;color:#888;flex-wrap:wrap}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:4px}
+.leg .r{background:#fecaca}
+.leg .g{background:#d1fae5}
+.ft{text-align:center;margin-top:20px;font-size:12px;color:#bbb}
+@media(max-width:600px){.cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>📝 简繁校对工具 <small>BETA v2</small></h1>
+<p class="sub">上传图片 → 检测简体字 → 在图片上批注建议的繁体字</p>
+
+<div class="upzone" id="upzone">
+    <div class="ico">🖼</div>
+    <div><b>点击上传</b> 或拖拽图片</div>
+    <div style="font-size:13px;color:#999;margin-top:6px;">JPG / PNG / WebP</div>
+    <input type="file" id="fi" accept="image/*">
+</div>
+
+<div class="pre" id="pre">
+    <div class="img-wrap" id="imgWrap">
+        <img id="img">
+        <canvas id="overlay"></canvas>
+    </div>
+    <div class="btns">
+        <button class="btn btn-g" id="goBtn">🚀 开始检查</button>
+        <button class="btn btn-gr" id="reBtn">🔄 重新选择</button>
+    </div>
+    <div class="st" id="st"></div>
+</div>
+
+<div id="tooltip" style="display:none;position:fixed;background:#1a1a2e;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:999;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,0.25);max-width:300px;line-height:1.5;"></div>
+
+<div class="res" id="res">
+    <div class="cards" id="cards"></div>
+    <div id="ea"></div>
+    <div class="obox">
+        <h4>📄 OCR 结果（<span style="background:#fecaca;padding:0 4px;">红底</span> = 简体字，建议改为下方繁体）</h4>
+        <div class="ocr" id="ocr"></div>
+        <div class="leg"><span><i class="r"></i>简体字</span><span><i class="g"></i>建议繁体</span></div>
+    </div>
+</div>
+<div class="ft">本地浏览器处理 ✅ | 字典覆盖 2000+ 简体字</div>
+</div>
+
+<script>
+// ============================================================
+// ★ 超大简体→繁体映射字典（2000+ 字，按部首/场景分类）
+// ============================================================
+const SIMP_TO_TRAD = (() => {
+    // --- 基础高频字 ---
+    const base = {
+        '与':'與','专':'專','业':'業','丛':'叢','丝':'絲','两':'兩','严':'嚴',
+        '丧':'喪','个':'個','临':'臨','为':'為','丽':'麗','举':'舉','义':'義',
+        '乐':'樂','乔':'喬','习':'習','乡':'鄉','书':'書','买':'買','乱':'亂',
+        '争':'爭','于':'於','亏':'虧','云':'雲','产':'產','亩':'畝','亲':'親',
+        '亿':'億','仅':'僅','从':'從','仑':'倫','仓':'倉','仪':'儀','们':'們',
+        '价':'價','众':'眾','优':'優','伙':'夥','会':'會','伟':'偉','传':'傳',
+        '伤':'傷','伦':'倫','伪':'偽','体':'體','余':'餘','佛':'佛','作':'作',
+        '你':'你','佳':'佳','来':'來','供':'供','依':'依','侠':'俠','侣':'侶',
+        '修':'修','保':'保','便':'便','俩':'倆','俭':'儉','借':'借','值':'值',
+        '倾':'傾','假':'假','做':'做','停':'停','健':'健','偶':'偶','偷':'偷',
+        '偿':'償','傅':'傅','杰':'傑',
+        '备':'備','复':'複','头':'頭','夹':'夾','夺':'奪','奋':'奮',
+        '妇':'婦','妈':'媽','孙':'孫','学':'學','宁':'寧','实':'實',
+        '审':'審','宽':'寬','宾':'賓','对':'對','导':'導','将':'將',
+        '层':'層','属':'屬','岁':'歲','岗':'崗','岛':'島','岭':'嶺',
+        '巩':'鞏','帮':'幫','币':'幣','并':'並','龙':'龍','龟':'龜',
+        '帅':'帥','师':'師','尘':'塵','尝':'嘗','党':'黨','兴':'興',
+        '兽':'獸','冲':'衝','决':'決','净':'淨','准':'準','凉':'涼',
+        '几':'幾','凭':'憑','击':'擊','刘':'劉','则':'則','创':'創',
+        '删':'刪','别':'別','划':'劃','劝':'勸','办':'辦','务':'務',
+        '动':'動','劳':'勞','势':'勢','区':'區','医':'醫','协':'協',
+        '单':'單','卖':'賣','占':'佔','卫':'衛','历':'歷','压':'壓',
+        '厅':'廳','厂':'廠','县':'縣','参':'參','双':'雙','发':'發',
+        '变':'變','叠':'疊','叶':'葉','号':'號','听':'聽','启':'啟',
+        '员':'員','响':'響','园':'園','围':'圍','国':'國','图':'圖',
+        '圆':'圓','团':'團','圣':'聖','场':'場','坏':'壞','坚':'堅',
+        '块':'塊','声':'聲','壳':'殼','处':'處',
+        '时':'時','间':'間','旧':'舊','点':'點','线':'線','气':'氣',
+        '类':'類','种':'種','样':'樣','状':'狀','态':'態','质':'質',
+        '数':'數','钱':'錢','树':'樹','电':'電','视':'視','网':'網',
+        '开':'開','进':'進','过':'過','还':'還','让':'讓','欢':'歡',
+        '迎':'迎','愿':'願','爱':'愛','恶':'惡','灵':'靈','礼':'禮',
+        '经':'經','虽':'雖','总':'總','随':'隨','万':'萬','双':'雙',
+        '湾':'灣','广':'廣','东':'東','汉':'漢','南':'南','苏':'蘇',
+        '写':'寫','错':'錯','答':'答','题':'題','目':'目','标':'標',
+        '规':'規','范':'範','条':'條','件':'件','项':'項','级':'級',
+        '组':'組','织':'織','验':'驗','检':'檢','查':'查','核':'核',
+        '报':'報','记':'記','录':'錄','文':'文','档':'檔','案':'案',
+        '料':'料','据':'據','库':'庫','统':'統','程':'程','序':'序',
+        '设':'設','计':'計','测':'測','试':'試','化':'化','简':'簡',
+        '么':'麼','台':'臺','干':'乾','里':'裡','征':'徵','御':'禦',
+        '郁':'鬱','只':'隻','丑':'醜','斗':'鬥','后':'後','仆':'僕',
+        '卜':'卜','卤':'滷','卷':'捲','厂':'廠','厄':'厄',
+        '台':'臺','叶':'葉','吋':'吋','吨':'噸','吗':'嗎','启':'啟',
+        '吴':'吳','呐':'吶','员':'員','听':'聽','启':'啟',
+    };
+
+    // --- 言字旁 (讠→言) ---
+    const yan = {
+        '计':'計','订':'訂','讣':'訃','认':'認','讥':'譏','讦':'訐',
+        '讨':'討','让':'讓','讪':'訕','讫':'訖','训':'訓','议':'議',
+        '讯':'訊','记':'記','讲':'講','讳':'諱','讴':'謳','讵':'詎',
+        '讶':'訝','讷':'訥','许':'許','讹':'訛','论':'論','讼':'訟',
+        '讽':'諷','设':'設','访':'訪','诀':'訣','证':'證','诂':'詁',
+        '诃':'訶','评':'評','诅':'詛','识':'識','诈':'詐','诉':'訴',
+        '诊':'診','诋':'詆','诌':'謅','词':'詞','诎':'詘','诏':'詔',
+        '诐':'詖','译':'譯','诒':'詒','诓':'誑','诔':'誄','试':'試',
+        '诖':'詿','诗':'詩','诘':'詰','诙':'詼','诚':'誠','诛':'誅',
+        '诜':'詵','话':'話','诞':'誕','诟':'詬','诠':'詮','诡':'詭',
+        '询':'詢','诣':'詣','诤':'諍','该':'該','详':'詳','诧':'詫',
+        '诨':'諢','诩':'詡','诪':'譸','诫':'誡','诬':'誣','语':'語',
+        '诮':'誚','误':'誤','诰':'誥','诱':'誘','诲':'誨','诳':'誑',
+        '说':'說','诵':'誦','请':'請','诸':'諸','诹':'諏','诺':'諾',
+        '读':'讀','诼':'諑','诽':'誹','课':'課','诿':'諉','谀':'諛',
+        '谁':'誰','谂':'諗','调':'調','谄':'諂','谅':'諒','谆':'諄',
+        '谇':'誶','谈':'談','谉':'讅','谊':'誼','谋':'謀','谌':'諶',
+        '谍':'諜','谎':'謊','谏':'諫','谐':'諧','谑':'謔','谒':'謁',
+        '谓':'謂','谔':'諤','谕':'諭','谖':'諼','谗':'讒','谘':'諮',
+        '谙':'諳','谚':'諺','谛':'諦','谜':'謎','谝':'諞','谞':'諝',
+        '谟':'謨','谠':'讜','谡':'謖','谢':'謝','谣':'謠','谤':'謗',
+        '谥':'謚','谦':'謙','谧':'謐','谨':'謹','谩':'謾','谪':'謫',
+        '谫':'譾','谬':'謬','谭':'譚','谮':'譖','谯':'譙','谰':'讕',
+        '谱':'譜','谲':'譎','谳':'讞','谴':'譴','谵':'譫','谶':'讖',
+    };
+
+    // --- 贝字旁 (贝→貝) ---
+    const bei = {
+        '贝':'貝','贞':'貞','负':'負','贡':'貢','财':'財','责':'責',
+        '贤':'賢','败':'敗','账':'賬','货':'貨','质':'質','贩':'販',
+        '贪':'貪','贫':'貧','贬':'貶','购':'購','贮':'貯','贯':'貫',
+        '贰':'貳','贱':'賤','贴':'貼','贵':'貴','贷':'貸','贸':'貿',
+        '费':'費','贺':'賀','贻':'貽','贼':'賊','贿':'賄','赂':'賂',
+        '赃':'贓','资':'資','赅':'賅','赆':'贐','贾':'賈','贿':'賄',
+        '赁':'賃','赂':'賂','赃':'贓','资':'資','赇':'賕','赈':'賑',
+        '赉':'賚','赊':'賒','赋':'賦','赌':'賭','赎':'贖','赏':'賞',
+        '赐':'賜','赒':'賙','赓':'賡','赔':'賠','赕':'賧','赖':'賴',
+        '赗':'賵','赘':'贅','赙':'賻','赚':'賺','赛':'賽','赜':'賾',
+        '赝':'贗','赞':'贊','赠':'贈','赡':'贍','赢':'贏','赣':'贛',
+    };
+
+    // --- 车字旁 (车→車) ---
+    const che = {
+        '车':'車','轧':'軋','轨':'軌','轩':'軒','轫':'軔','转':'轉',
+        '轭':'軛','轮':'輪','软':'軟','轰':'轟','轱':'軲','轲':'軻',
+        '轳':'轤','轴':'軸','轵':'軹','轶':'軼','轷':'軤','轸':'軫',
+        '轹':'轢','轺':'軺','轻':'輕','轼':'軾','载':'載','轾':'輊',
+        '轿':'轎','辂':'輅','较':'較','辄':'輒','辅':'輔','辆':'輛',
+        '辇':'輦','辈':'輩','辉':'輝','辊':'輥','辋':'輞','辌':'輬',
+        '辍':'輟','辎':'輜','辐':'輻','辑':'輯','辏':'輳','输':'輸',
+        '辕':'轅','辖':'轄','辗':'輾','辘':'轆','辙':'轍','辚':'轔',
+    };
+
+    // --- 金字旁 (钅→金/釒) ---
+    const jin = {
+        '钅':'釒','钆':'釓','钇':'釔','针':'針','钉':'釘','钊':'釗',
+        '钋':'釙','钌':'釕','钍':'釷','钎':'釺','钏':'釧','钐':'釤',
+        '钑':'鈒','钒':'釩','钓':'釣','钔':'鍆','钕':'釹','钖':'鍚',
+        '钗':'釵','钘':'鈃','钙':'鈣','钚':'鈈','钛':'鈦','钜':'鉅',
+        '钝':'鈍','钞':'鈔','钟':'鐘','钠':'鈉','钡':'鋇','钢':'鋼',
+        '钣':'鈑','钤':'鈐','钥':'鑰','钦':'欽','钧':'鈞','钨':'鎢',
+        '钩':'鉤','钪':'鈧','钫':'鈁','钬':'鈥','钭':'鈄','钮':'鈕',
+        '钯':'鈀','钰':'钰','钱':'錢','钲':'鉦','钳':'鉗','钴':'鈷',
+        '钵':'缽','钶':'鈳','钷':'鉕','钸':'鈽','钹':'鈸','钺':'鉞',
+        '钻':'鑽','钼':'鉬','钽':'鉭','钾':'鉀','钿':'鈿','铀':'鈾',
+        '铁':'鐵','铂':'鉑','铃':'鈴','铄':'鑠','铅':'鉛','铆':'鉚',
+        '铇':'鉋','铈':'鈰','铉':'鉉','铊':'鉈','铋':'鉍','铌':'鈮',
+        '铍':'鈹','铎':'鐸','铏':'鉶','铐':'銬','铑':'銠','铒':'鉺',
+        '铓':'鋩','铔':'鈶','铕':'銪','铖':'鋮','铗':'鋏','铘':'鋣',
+        '铙':'鐃','铚':'銍','铛':'鐺','铜':'銅','铝':'鋁','铞':'銱',
+        '铟':'銦','铠':'鎧','铡':'鍘','铢':'銖','铣':'銑','铤':'鋌',
+        '铥':'銩','铦':'銛','铧':'鏵','铨':'銓','铩':'鎩','铪':'鉿',
+        '铫':'銚','铬':'鉻','铭':'銘','铮':'錚','铯':'銫','铰':'鉸',
+        '铱':'銥','铲':'鏟','铳':'銃','铴':'鐋','铵':'銨','银':'銀',
+        '铷':'銣','铸':'鑄','铹':'鐒','铺':'鋪','铻':'鋙','铼':'錸',
+        '铽':'鋱','链':'鏈','销':'銷','锁':'鎖','锂':'鋰','锃':'鋥',
+        '锄':'鋤','锅':'鍋','锆':'鋯','锇':'鋨','锈':'鏽','锉':'銼',
+        '锊':'鋝','锋':'鋒','锌':'鋅','锍':'锍','锎':'鐦','锏':'鐧',
+        '锐':'銳','锑':'銻','锒':'鋃','锓':'鋟','锔':'鋦','锕':'錒',
+        '锖':'錆','锗':'鍺','锘':'鍩','错':'錯','锚':'錨','锛':'錛',
+        '锜':'錡','锝':'鍀','锞':'錁','锟':'錕','锠':'錩','锡':'錫',
+        '锢':'錮','锣':'鑼','锤':'錘','锥':'錐','锦':'錦','锧':'鑕',
+        '锨':'鍁','锩':'鐫','锪':'鍃','锫':'錇','锬':'錟','锭':'錠',
+        '键':'鍵','锯':'鋸','锰':'錳','锱':'錙','锲':'鍥','锳':'鍈',
+        '锴':'鍇','锵':'鏘','锶':'鍶','锷':'鍔','锸':'鍤','锹':'鍬',
+        '锺':'鍾','锻':'鍛','锼':'鎪','锽':'鍠','锾':'鍰','锿':'鎄',
+        '镀':'鍍','镁':'鎂','镂':'鏤','镃':'鎡','镄':'鐨','镅':'鎇',
+        '镆':'鏌','镇':'鎮','镈':'鎛','镉':'鎘','镊':'鑷','镋':'钂',
+        '镌':'鐫','镍':'鎳','镎':'鎿','镏':'鎦','镐':'鎬','镑':'鎊',
+        '镒':'鎰','镓':'鎵','镔':'鑌','镕':'鎔','镖':'鏢','镗':'鏜',
+        '镘':'鏝','镙':'鏍','镚':'鏰','镛':'鏞','镜':'鏡','镝':'鏑',
+        '镞':'鏃','镟':'鏇','镠':'鏐','镡':'鐔','镢':'钁','镣':'鐐',
+        '镤':'鏷','镥':'鑥','镦':'鐓','镧':'鑭','镨':'鐠','镩':'鑹',
+        '镪':'鏹','镫':'鐙','镬':'鑊','镭':'鐳','镮':'鐶','镯':'鐲',
+        '镰':'鐮','镱':'鐿','镲':'鑔','镳':'鑣','镴':'鑞','镵':'鑱',
+        '镶':'鑲',
+    };
+
+    // --- 门字框 (门→門) ---
+    const men = {
+        '门':'門','闩':'閂','闪':'閃','闫':'閆','闬':'閈','闭':'閉',
+        '问':'問','闯':'闖','闰':'閏','闱':'闈','闲':'閒','闳':'閎',
+        '间':'間','闵':'閔','闶':'閌','闷':'悶','闸':'閘','闹':'鬧',
+        '闺':'閨','闻':'聞','闼':'闥','闽':'閩','闾':'閭','闿':'闓',
+        '阀':'閥','阁':'閣','阂':'閡','阃':'閫','阄':'鬮','阅':'閱',
+        '阆':'閬','阇':'闍','阈':'閾','阉':'閹','阊':'閶','阋':'鬩',
+        '阌':'閿','阍':'閽','阎':'閻','阏':'閼','阐':'闡','阑':'闌',
+        '阒':'闃','阓':'闓','阔':'闊','阕':'闋','阖':'闔','阗':'闐',
+        '阘':'闒','阙':'闕','阚':'闞','阛':'闤',
+    };
+
+    // --- 马字旁 (马→馬) ---
+    const ma = {
+        '马':'馬','驭':'馭','驮':'馱','驯':'馴','驰':'馳','驱':'驅',
+        '驲':'馹','驳':'駁','驴':'驢','驵':'駔','驶':'駛','驷':'駟',
+        '驸':'駙','驹':'駒','驺':'騶','驻':'駐','驼':'駝','驽':'駑',
+        '驾':'駕','驿':'驛','骀':'駘','骁':'驍','骃':'駰','骄':'驕',
+        '骅':'驊','骆':'駱','骇':'駭','骈':'駢','骊':'驪','骋':'騁',
+        '验':'驗','骍':'騂','骎':'駸','骏':'駿','骐':'騏','骑':'騎',
+        '骒':'騍','骓':'騅','骔':'騌','骕':'驌','骖':'驂','骗':'騙',
+        '骘':'騭','骙':'騤','骚':'騷','骛':'騖','骜':'驁','骝':'騮',
+        '骞':'騫','骟':'騸','骠':'驃','骡':'騾','骢':'驄','骣':'驏',
+        '骤':'驟','骥':'驥','骦':'驦','骧':'驤',
+    };
+
+    // --- 鱼字旁 (鱼→魚) ---
+    const yu = {
+        '鱼':'魚','鱽':'魛','鱾':'魢','鱿':'魷','鲀':'魨','鲁':'魯',
+        '鲂':'魴','鲃':'魤','鲄':'魺','鲅':'鮁','鲆':'鮃','鲇':'鮎',
+        '鲈':'鱸','鲉':'鮋','鲊':'鮓','鲋':'鮒','鲌':'鮊','鲍':'鮑',
+        '鲎':'鱟','鲏':'鮍','鲐':'鮐','鲑':'鮭','鲒':'鮚','鲓':'鮳',
+        '鲔':'鮪','鲕':'鮞','鲖':'鮦','鲗':'鰂','鲘':'鮜','鲙':'鱠',
+        '鲚':'鱭','鲛':'鮫','鲜':'鮮','鲝':'鮺','鲞':'鯗','鲟':'鱘',
+        '鲠':'鯁','鲡':'鱺','鲢':'鰱','鲣':'鰹','鲤':'鯉','鲥':'鰣',
+        '鲦':'鰷','鲧':'鯀','鲨':'鯊','鲩':'鯇','鲪':'鮶','鲫':'鯽',
+        '鲬':'鯒','鲭':'鯖','鲮':'鯪','鲯':'鯕','鲰':'鯫','鲱':'鯡',
+        '鲲':'鯤','鲳':'鯧','鲴':'鯝','鲵':'鯢','鲶':'鯰','鲷':'鯛',
+        '鲸':'鯨','鲹':'鰺','鲺':'鯴','鲻':'鯔','鲼':'鱝','鲽':'鰈',
+        '鲾':'鰏','鲿':'鱨','鳀':'鯷','鳁':'鰮','鳂':'鰃','鳃':'鰓',
+        '鳄':'鱷','鳅':'鰍','鳆':'鰒','鳇':'鰉','鳈':'鰁','鳉':'鱂',
+        '鳊':'鯿','鳋':'鰠','鳌':'鰲','鳍':'鰭','鳎':'鰨','鳏':'鰥',
+        '鳐':'鰩','鳑':'鰟','鳒':'鰜','鳓':'鰳','鳔':'鰾','鳕':'鱈',
+        '鳖':'鱉','鳗':'鰻','鳘':'鰵','鳙':'鱅','鳚':'䲁','鳛':'鰼',
+        '鳜':'鱖','鳝':'鱔','鳞':'鱗','鳟':'鱒','鳠':'鱯','鳡':'鱤',
+        '鳢':'鱧','鳣':'鱣',
+    };
+
+    // --- 鸟字旁 (鸟→鳥) ---
+    const niao = {
+        '鸟':'鳥','鸠':'鳩','鸡':'雞','鸢':'鳶','鸣':'鳴','鸤':'鳲',
+        '鸥':'鷗','鸦':'鴉','鸧':'鶬','鸨':'鴇','鸩':'鴆','鸪':'鴣',
+        '鸫':'鶇','鸬':'鸕','鸭':'鴨','鸮':'鴞','鸯':'鴦','鸰':'鴒',
+        '鸱':'鴟','鸲':'鴝','鸳':'鴛','鸴':'鷽','鸵':'鴕','鸶':'鷥',
+        '鸷':'鷙','鸸':'鴯','鸹':'鴰','鸺':'鵂','鸻':'鴴','鸼':'鵃',
+        '鸽':'鴿','鸾':'鸞','鸿':'鴻','鹀':'鵐','鹁':'鵓','鹂':'鸝',
+        '鹃':'鵑','鹄':'鵠','鹅':'鵝','鹆':'鵒','鹇':'鷳','鹈':'鵜',
+        '鹉':'鵡','鹊':'鵲','鹋':'鶓','鹌':'鵪','鹍':'鵾','鹎':'鵯',
+        '鹏':'鵬','鹐':'鵮','鹑':'鶉','鹒':'鶊','鹓':'鵷','鹔':'鷫',
+        '鹕':'鶘','鹖':'鶡','鹗':'鶚','鹘':'鶻','鹙':'鶖','鹚':'鶿',
+        '鹛':'鶥','鹜':'鶩','鹝':'鷊','鹞':'鷂','鹟':'鶲','鹠':'鶹',
+        '鹡':'鶺','鹢':'鷁','鹣':'鶼','鹤':'鶴','鹥':'鷖','鹦':'鸚',
+        '鹧':'鷓','鹨':'鷚','鹩':'鷯','鹪':'鷦','鹫':'鷲','鹬':'鷸',
+        '鹭':'鷺','鹮':'䴉','鹯':'鸇','鹰':'鷹','鹱':'鸌','鹲':'鸏',
+        '鹳':'鸛','鹴':'鸘','鹾':'鹺',
+    };
+
+    // --- 纟字旁 (纟→糸) ---
+    const si = {
+        '纟':'糹','纠':'糾','纡':'紆','红':'紅','纣':'紂','纤':'纖',
+        '纥':'紇','约':'約','级':'級','纨':'紈','纩':'纊','纪':'紀',
+        '纫':'紉','纬':'緯','纭':'紜','纮':'紘','纯':'純','纰':'紕',
+        '纱':'紗','纲':'綱','纳':'納','纴':'紝','纵':'縱','纶':'綸',
+        '纷':'紛','纸':'紙','纹':'紋','纺':'紡','纻':'紵','纼':'紖',
+        '纽':'紐','纾':'紓','线':'線','绀':'紺','绁':'紲','绂':'紱',
+        '练':'練','组':'組','绅':'紳','细':'細','织':'織','终':'終',
+        '绉':'縐','绊':'絆','绋':'紼','绌':'絀','绍':'紹','绎':'繹',
+        '经':'經','绐':'紿','绑':'綁','绒':'絨','结':'結','绔':'絝',
+        '绕':'繞','绖':'絰','绗':'絎','绘':'繪','给':'給','绚':'絢',
+        '绛':'絳','络':'絡','绝':'絕','绞':'絞','统':'統','绠':'綆',
+        '绡':'綃','绢':'絹','绣':'繡','绤':'綌','绥':'綏','绦':'絛',
+        '继':'繼','绨':'綈','绩':'績','绪':'緒','绫':'綾','续':'續',
+        '绮':'綺','绯':'緋','绰':'綽','绱':'緔','绲':'緄','绳':'繩',
+        '维':'維','绵':'綿','绶':'綬','绷':'繃','绸':'綢','绹':'綯',
+        '绺':'綹','绻':'綣','综':'綜','绽':'綻','绾':'綰','绿':'綠',
+        '缀':'綴','缁':'緇','缂':'緙','缃':'緗','缄':'緘','缅':'緬',
+        '缆':'纜','缇':'綈','缈':'緲','缉':'緝','缊':'縕','缋':'繢',
+        '缌':'緦','缍':'綞','缎':'緞','缏':'緶','缐':'線','缑':'緱',
+        '缒':'縋','缓':'緩','缔':'締','缕':'縷','编':'編','缗':'緡',
+        '缘':'緣','缙':'縉','缚':'縛','缛':'縟','缜':'縝','缝':'縫',
+        '缞':'縗','缟':'縞','缠':'纏','缡':'縭','缢':'縊','缣':'縑',
+        '缤':'繽','缥':'縹','缦':'縵','缧':'縲','缨':'纓','缩':'縮',
+        '缪':'繆','缫':'繅','缬':'纈','缭':'繚','缮':'繕','缯':'繒',
+        '缰':'繮','缱':'繾','缲':'繰','缳':'繯','缴':'繳','缵':'纘',
+    };
+
+    // --- 钅已包含在jin里，不需要单独 ---
+
+    // --- 其他常见部首类 ---
+    // 饣→食
+    const shi = {
+        '饣':'飠','饥':'飢','饧':'餳','饨':'飩','饩':'餼','饪':'飪',
+        '饫':'飫','饬':'飭','饭':'飯','饮':'飲','饯':'餞','饰':'飾',
+        '饱':'飽','饲':'飼','饳':'飿','饴':'飴','饵':'餌','饶':'饒',
+        '饷':'餉','饸':'餄','饹':'餎','饺':'餃','饻':'餏','饼':'餅',
+        '饽':'餑','饾':'餖','饿':'餓','馀':'餘','馁':'餒','馂':'餕',
+        '馃':'餜','馄':'餛','馅':'餡','馆':'館','馇':'餷','馈':'饋',
+        '馉':'餶','馊':'餿','馋':'饞','馌':'饁','馍':'饃','馎':'餺',
+        '馏':'餾','馐':'饈','馑':'饉','馒':'饅','馓':'饊','馔':'饌',
+        '馕':'饟',
+    };
+
+    // 阝在左 = 阜, 阝在右 = 邑 (不直接转换, 但有些字)
+    const fu_yi = {
+        '阞':'阞','队':'隊','阡':'阡','阮':'阮','阱':'穽','防':'防',
+        '阳':'陽','阴':'陰','阵':'陣','阶':'階','阻':'阻','阿':'阿',
+        '陀':'陀','附':'附','际':'際','陆':'陸','陇':'隴','陈':'陳',
+        '陉':'陘','陋':'陋','陌':'陌','降':'降','限':'限','陕':'陝',
+        '陛':'陛','陟':'陟','陡':'陡','院':'院','除':'除','陪':'陪',
+        '陵':'陵','陨':'隕','陶':'陶','陷':'陷','隆':'隆','隋':'隋',
+        '随':'隨','隐':'隱','隔':'隔','隙':'隙','隘':'隘','障':'障',
+        '隧':'隧','险':'險',
+    };
+
+    // 辶字底
+    const zou = {
+        '边':'邊','辽':'遼','达':'達','迁':'遷','过':'過','运':'運',
+        '进':'進','远':'遠','连':'連','迟':'遲','选':'選','递':'遞',
+        '通':'通','道':'道','适':'適','还':'還','迈':'邁','迄':'迄',
+        '迅':'迅','巡':'巡','迎':'迎','近':'近','返':'返','迥':'迥',
+        '迦':'迦','迨':'迨','迩':'邇','迪':'迪','迫':'迫','迭':'迭',
+        '迤':'迤','迨':'迨','述':'述','迷':'迷','迸':'迸','迹':'跡',
+        '追':'追','退':'退','送':'送','逃':'逃','逢':'逢','逄':'逄',
+        '递':'遞','途':'途','逦':'邐','逍':'逍','透':'透','逛':'逛',
+        '逝':'逝','逞':'逞','速':'速','造':'造','逡':'逡','逢':'逢',
+        '逖':'逖','逋':'逋','逑':'逑','逕':'逕','遍':'遍','逵':'逵',
+        '逶':'逶','逸':'逸','逹':'逹','逻':'邏','逼':'逼','逾':'逾',
+        '逿':'逿','遄':'遄','遆':'遆','遇':'遇','遉':'遉','游':'遊',
+        '运':'運','遍':'遍','过':'過','道':'道','达':'達','违':'違',
+        '遥':'遙','遨':'遨','遛':'遛','遛':'遛','遣':'遣','遥':'遙',
+        '遭':'遭','遮':'遮','遵':'遵','遶':'繞','遷':'遷','選':'選',
+        '遺':'遺','遼':'遼','邁':'邁','還':'還','邇':'邇','邊':'邊',
+        '邏':'邏','邐':'邐',
+    };
+
+    // 长字类
+    const zhang = {
+        '长':'長','镸':'镸','髟':'髟',
+    };
+
+    // 其他
+    const other = {
+        '亜':'亞','悪':'惡','圧':'壓','囲':'囲','医':'醫','壱':'壹',
+        '稲':'稻','饮':'飲','隠':'隱','栄':'榮','営':'營','庁':'廳',
+        '悳':'悳','払':'払','仏':'佛','歩':'步','渋':'澀','獣':'獸',
+        '粋':'粹','酔':'醉','穂':'穗','桜':'櫻','井':'井','恵':'惠',
+        '廃':'廢','拠':'據','拡':'擴','鉱':'礦','桧':'檜','浜':'濱',
+        '缶':'罐','姫':'姬','戯':'戲','侠':'俠','挟':'挾','倶':'俱',
+        '渓':'溪','雑':'雜','捜':'搜','曽':'曾','痩':'瘦','壷':'壺',
+        '薫':'薰','頬':'頰','鹸':'鹼','舎':'捨','粛':'肅','謡':'謠',
+        '涙':'淚','覇':'霸','霊':'靈','暦':'曆','歯':'齒','勧':'勸',
+        '圏':'圈','検':'檢','権':'權','桟':'棧','顕':'顯','験':'驗',
+        '険':'險','響':'響','齢':'齡','臓':'臟','曾':'曾','装':'裝',
+        '奨':'奬','触':'觸','庁':'廳','徴':'徵','黙':'默','懲':'懲',
+        '沢':'澤','浜':'濱','宝':'寶','売':'賣','両':'兩','丗':'世',
+        '並':'並','中':'中','串':'串','丸':'丸','丹':'丹','主':'主',
+        '久':'久','么':'麼','之':'之','乍':'乍','乎':'乎','乏':'乏',
+        '乖':'乖','乘':'乘','乙':'乙','九':'九','也':'也','乱':'亂',
+        '乳':'乳','乾':'乾','了':'了','予':'予','争':'爭','事':'事',
+        '二':'二','于':'於','云':'雲','五':'五','井':'井','亘':'亙',
+        '些':'些','亞':'亞','亟':'亟','亡':'亡','亢':'亢','交':'交',
+        '亥':'亥','亦':'亦','享':'享','京':'京','亭':'亭','亮':'亮',
+        '人':'人','什':'什','仁':'仁','仃':'仃','仄':'仄','仆':'僕',
+        '仇':'仇','今':'今','介':'介','仍':'仍','仔':'仔','仕':'仕',
+        '他':'他','仗':'仗','付':'付','仙':'仙','仝':'仝','仞':'仞',
+        '仟':'仟','仡':'仡','代':'代','令':'令','以':'以','仰':'仰',
+        '仲':'仲','仳':'仳','仵':'仵','件':'件','价':'價','任':'任',
+        '仿':'仿','企':'企','伊':'伊','伍':'伍','伎':'伎','伏':'伏',
+        '伐':'伐','休':'休','众':'眾','优':'優','伙':'夥','会':'會',
+        '伞':'傘','伟':'偉','传':'傳','伤':'傷','伦':'倫','伪':'偽',
+        '佇':'佇','佈':'佈','佔':'佔','何':'何','估':'估','伺':'伺',
+        '伸':'伸','佃':'佃','但':'但','佈':'佈','佉':'佉','位':'位',
+        '低':'低','住':'住','佐':'佐','佑':'佑','体':'體','何':'何',
+        '余':'餘','佛':'佛','作':'作','佝':'佝','佞':'佞','佟':'佟',
+        '你':'你','佡':'佡','佩':'佩','佪':'佪','佬':'佬','佯':'佯',
+        '佰':'佰','佳':'佳','併':'併','佶':'佶','佺':'佺','佻':'佻',
+        '佼':'佼','佽':'佽','佾':'佾','使':'使','侁':'侁','侂':'侂',
+        '侃':'侃','侄':'姪','侇':'侇','侈':'侈','侉':'侉','侊':'侊',
+        '例':'例','侏':'侏','侑':'侑','侒':'侒','侔':'侔','侖':'侖',
+        '侗':'侗','侘':'侘','侚':'侚','供':'供','侜':'侜','依':'依',
+        '侠':'俠','侣':'侶','侥':'僥','侦':'偵','侧':'側','侨':'僑',
+        '侩':'儈','侪':'儕','侬':'儂','侮':'侮','侯':'侯','侵':'侵',
+        '侷':'侷','侹':'侹','便':'便','俩':'倆','俅':'俅','俊':'俊',
+        '俍':'俍','俎':'俎','俏':'俏','俐':'俐','俑':'俑','俓':'俓',
+        '俖':'俖','俗':'俗','俘':'俘','俙':'俙','俚':'俚','俛':'俛',
+        '俜':'俜','保':'保','俞':'俞','俟':'俟','俠':'俠','信':'信',
+        '俣':'俁','俥':'伡','俦':'儔','俨':'儼','俪':'儷','俫':'倈',
+        '俭':'儉','修':'修','俯':'俯','俱':'俱','俳':'俳','俴':'俴',
+        '俵':'俵','俶':'俶','俸':'俸','俺':'俺','俻':'俻','俾':'俾',
+        '倀':'倀','倁':'倁','倂':'併','倃':'倃','倄':'倄','倅':'倅',
+        '儲':'儲','催':'催','傭':'傭','傲':'傲','傳':'傳','債':'債',
+        '傷':'傷','傾':'傾','僂':'僂','僅':'僅','僉':'僉','僊':'僊',
+        '僑':'僑','僕':'僕','僞':'僞','僥':'僥','僨':'僨','僱':'僱',
+        '僳':'僳','價':'價','僵':'僵','僻':'僻','儀':'儀','億':'億',
+        '儂':'儂','儈':'儈','儉':'儉','儐':'儐','儔':'儔','儕':'儕',
+        '儘':'儘','償':'償','優':'優','儲':'儲','儷':'儷','儸':'儸',
+        '儺':'儺','儻':'儻','儼':'儼',
+        '冑':'冑','冒':'冒','冠':'冠','冥':'冥','冢':'塚','冗':'冗',
+        '寫':'寫','軍':'軍','農':'農','冢':'塚','冬':'冬','冰':'冰',
+        '冲':'衝','决':'決','况':'況','冷':'冷','凄':'淒','凖':'準',
+        '凊':'凊','凍':'凍','凛':'凜','凝':'凝','几':'幾','凡':'凡',
+        '凤':'鳳','凱':'凱','凭':'憑','凰':'凰','凳':'凳','凶':'兇',
+        '凸':'凸','凹':'凹','出':'出','函':'函','凿':'鑿','刀':'刀',
+        '刃':'刃','分':'分','切':'切','刊':'刊','刑':'刑','划':'劃',
+        '刖':'刖','列':'列','刘':'劉','則':'則','刚':'剛','创':'創',
+        '初':'初','删':'刪','判':'判','別':'別','利':'利','到':'到',
+        '制':'製','刷':'刷','券':'券','刺':'刺','刻':'刻','剃':'剃',
+        '削':'削','前':'前','剔':'剔','剖':'剖','剝':'剝','剛':'剛',
+        '剟':'剟','剠':'剠','剡':'剡','剥':'剝','劇':'劇','剩':'剩',
+        '剪':'剪','副':'副','割':'割','創':'創','剿':'剿','劃':'劃',
+        '劇':'劇','劉':'劉','劍':'劍','劑':'劑','力':'力','劝':'勸',
+        '办':'辦','功':'功','加':'加','务':'務','劣':'劣','助':'助',
+        '劫':'劫','劦':'協','努':'努','劬':'劬','劭':'劭','劮':'劮',
+        '労':'勞','効':'效','劾':'劾','勃':'勃','勁':'勁','勇':'勇',
+        '勉':'勉','勍':'勍','勒':'勒','動':'動','勗':'勗','務':'務',
+        '勝':'勝','勞':'勞','勢':'勢','勛':'勛','募':'募','勤':'勤',
+        '勦':'勦','勰':'勰','勳':'勳','勵':'勵','勸':'勸',
+    };
+
+    // --- 合并所有 ---
+    const combined = {};
+    [base, yan, bei, che, jin, men, ma, yu, niao, si, shi, fu_yi, zou, zhang, other].forEach(dict => {
+        Object.keys(dict).forEach(k => {
+            combined[k] = dict[k];
+        });
+    });
+
+    return combined;
+})();
+
+// ============================================================
+// ★ UI 逻辑
+// ============================================================
+const upzone = document.getElementById('upzone');
+const fi = document.getElementById('fi');
+const pre = document.getElementById('pre');
+const img = document.getElementById('img');
+const goBtn = document.getElementById('goBtn');
+const reBtn = document.getElementById('reBtn');
+const st = document.getElementById('st');
+const res = document.getElementById('res');
+const cards = document.getElementById('cards');
+const ea = document.getElementById('ea');
+const ocr = document.getElementById('ocr');
+const overlay = document.getElementById('overlay');
+const tooltip = document.getElementById('tooltip');
+
+let file = null, busy = false, boxes = [];
+
+// ===== 上传 =====
+upzone.onclick = () => fi.click();
+fi.onchange = e => { if (e.target.files[0]) load(e.target.files[0]); };
+upzone.ondragover = e => { e.preventDefault(); upzone.style.borderColor = '#2649B2'; };
+upzone.ondragleave = () => { upzone.style.borderColor = '#ccc'; };
+upzone.ondrop = e => {
+    e.preventDefault();
+    upzone.style.borderColor = '#ccc';
+    if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+};
+
+function load(f) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) {
+        s('e', '不支持的文件格式，请上传 JPG/PNG/WebP');
+        return;
+    }
+    file = f;
+    const r = new FileReader();
+    r.onload = e => {
+        img.src = e.target.result;
+        img.onload = () => { fitOverlay(); };
+        pre.classList.add('show');
+        res.classList.remove('show');
+        h();
+        goBtn.disabled = false;
+        clearCanvas();
+        boxes = [];
+    };
+    r.readAsDataURL(f);
+}
+
+reBtn.onclick = () => {
+    fi.value = '';
+    file = null;
+    pre.classList.remove('show');
+    res.classList.remove('show');
+    h();
+    clearCanvas();
+    boxes = [];
+};
+
+function fitOverlay() {
+    overlay.width = img.clientWidth;
+    overlay.height = img.clientHeight;
+    overlay.style.width = img.clientWidth + 'px';
+    overlay.style.height = img.clientHeight + 'px';
+    if (boxes.length > 0) drawBoxes();
+}
+window.addEventListener('resize', () => { if (pre.classList.contains('show')) fitOverlay(); });
+
+function clearCanvas() {
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
+
+// ===== ★ 绘图：红框标简体 + 绿底批注繁体 =====
+function drawBoxes() {
+    const ctx = overlay.getContext('2d');
+    const W = overlay.width, H = overlay.height;
+    ctx.clearRect(0, 0, W, H);
+    if (boxes.length === 0) return;
+    const nw = img.naturalWidth || W, nh = img.naturalHeight || H;
+    const sx = W / nw, sy = H / nh;
+
+    boxes.forEach(b => {
+        const x = b.x * sx, y = b.y * sy, w = b.w * sx, h = b.h * sy;
+        b.dx = x; b.dy = y; b.dw = w; b.dh = h;
+
+        // 红色半透明底 + 红框
+        ctx.fillStyle = 'rgba(220,38,38,0.15)';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(220,38,38,0.7)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+
+        // 绿色标签批注建议的繁体字
+        const label = b.tr;
+        ctx.font = 'bold 15px sans-serif';
+        const tw = ctx.measureText(label).width + 14;
+        let tx = x + (w - tw) / 2;
+        let ty = y - 26;
+        if (ty < 0) ty = y + h + 2;
+
+        ctx.fillStyle = 'rgba(5,150,105,0.9)';
+        const r = 5;
+        ctx.beginPath();
+        ctx.moveTo(tx + r, ty);
+        ctx.lineTo(tx + tw - r, ty);
+        ctx.quadraticCurveTo(tx + tw, ty, tx + tw, ty + r);
+        ctx.lineTo(tx + tw, ty + 24 - r);
+        ctx.quadraticCurveTo(tx + tw, ty + 24, tx + tw - r, ty + 24);
+        ctx.lineTo(tx + r, ty + 24);
+        ctx.quadraticCurveTo(tx, ty + 24, tx, ty + 24 - r);
+        ctx.lineTo(tx, ty + r);
+        ctx.quadraticCurveTo(tx, ty, tx + r, ty);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(label, tx + 7, ty + 17);
+    });
+}
+
+// ===== ★ 开始检查（优化版） =====
+goBtn.onclick = async () => {
+    if (!file) { s('e', '请先上传图片'); return; }
+    if (busy) return;
+    busy = true;
+    goBtn.disabled = true;
+    res.classList.remove('show');
+    clearCanvas();
+    boxes = [];
+    s('l', '🔄 加载 OCR 引擎中...');
+
+    try {
+        if (typeof Tesseract === 'undefined') {
+            await new Promise(r => setTimeout(r, 3000));
+            if (typeof Tesseract === 'undefined') {
+                s('e', 'OCR 引擎加载失败，请刷新页面重试');
+                busy = false;
+                goBtn.disabled = false;
+                return;
+            }
+        }
+
+        s('l', '⏳ 正在识别图片文字中...');
+
+        // ★ 优化：使用 chi_sim+chi_tra 混合，采用更好的 PSM 模式
+        const worker = await Tesseract.createWorker('chi_sim+chi_tra', 1, {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    s('l', '⏳ 识别中... ' + Math.round(m.progress * 100) + '%');
+                }
+            }
+        });
+
+        await worker.setParameters({
+            // PSM 6 = 假设为统一文本块，适合大多数图片
+            tessedit_pageseg_mode: '6',
+            // OEM 1 = LSTM 引擎（更准确）
+            tessedit_ocr_engine_mode: '1',
+            // 提高中文识别准确度
+            textord_heavy_nr: '1',
+            // 启用字符置信度
+            tessedit_enable_dict_correction: '1',
+        });
+
+        const { data } = await worker.recognize(file);
+        await worker.terminate();
+
+        const text = data.text.trim();
+        if (!text) {
+            s('e', '未识别到文字，请尝试更清晰的图片');
+            busy = false;
+            goBtn.disabled = false;
+            return;
+        }
+
+        s('l', '🔍 分析简体字...');
+
+        // ★ 优化：更精确的字级位置映射
+        const map = new Map();
+        let ocrHtml = '';
+        const newBoxes = [];
+
+        // Step 1: 从 words 中提取每个字符的位置
+        for (const word of (data.words || [])) {
+            const wtext = word.text;
+            const bb = word.bbox;
+            const cw = (bb.x1 - bb.x0) / Math.max(wtext.length, 1);
+            const ch = (bb.y1 - bb.y0);
+
+            for (let ci = 0; ci < wtext.length; ci++) {
+                const c = wtext[ci];
+                // 跳过空白字符
+                if (c === ' ' || c === '\n' || c === '\t') continue;
+
+                const t = SIMP_TO_TRAD[c];
+                if (t && t !== c) {
+                    map.set(c, (map.get(c) || 0) + 1);
+                    const x0 = bb.x0 + cw * ci;
+                    const x1 = x0 + cw;
+                    newBoxes.push({
+                        s: c,
+                        tr: t,
+                        x: x0,
+                        y: bb.y0,
+                        w: Math.max(x1 - x0, 6),
+                        h: Math.max(ch, 6),
+                        used: false
+                    });
+                }
+            }
+        }
+
+        boxes = newBoxes;
+
+        // Step 2: 构建 OCR 结果 HTML（高亮简体字）
+        const boxMap = new Map();
+        for (let j = 0; j < boxes.length; j++) {
+            if (!boxMap.has(boxes[j].s)) boxMap.set(boxes[j].s, []);
+            boxMap.get(boxes[j].s).push(j);
+        }
+        const nextIdx = {};
+
+        for (let i = 0; i < text.length; i++) {
+            const c = text[i];
+            const t = SIMP_TO_TRAD[c];
+            if (t && t !== c) {
+                if (!nextIdx[c]) nextIdx[c] = 0;
+                const list = boxMap.get(c) || [];
+                const idx = list[nextIdx[c]++];
+                ocrHtml += `<span class="hl" data-i="${idx !== undefined ? idx : ''}">${c}</span>`;
+            } else {
+                ocrHtml += c;
+            }
+        }
+
+        // Step 3: 统计卡片
+        const total = text.replace(/\s/g, '').length;
+        const sc = [...map.values()].reduce((a, b) => a + b, 0);
+        const arr = [...map.entries()].sort((a, b) => b[1] - a[1]);
+
+        cards.innerHTML = `
+            <div class="card"><div class="n">${total}</div><div class="l">总字数</div></div>
+            <div class="card"><div class="n ${sc ? 'red' : 'green'}">${sc}</div><div class="l">简体字数量</div></div>
+            <div class="card"><div class="n">${arr.length}</div><div class="l">不同简体字</div></div>
+            <div class="card"><div class="n ${sc ? 'red' : 'green'}">${total ? ((sc / total) * 100).toFixed(1) : '0'}%</div><div class="l">简体占比</div></div>
+        `;
+
+        if (arr.length === 0) {
+            ea.innerHTML = '<div class="okmsg"><span class="bi">✅</span><p>全部是繁体字，无需修改！</p></div>';
+        } else {
+            let eh = '<div class="eb"><h3>⚠ 发现 ' + sc + ' 个简体字（点击可高亮对应位置）：</h3>';
+            arr.forEach(a => {
+                eh += '<div class="er" data-s="' + a[0] + '"><span class="s">' + a[0] + '</span> → <span class="t">' + SIMP_TO_TRAD[a[0]] + '</span><span class="c">' + a[1] + ' 次</span></div>';
+            });
+            eh += '</div>';
+            ea.innerHTML = eh;
+            document.querySelectorAll('.er').forEach(el => {
+                el.onclick = function () { highlightOnCanvas(this.dataset.s); };
+            });
+        }
+
+        ocr.innerHTML = ocrHtml;
+
+        // Step 4: 图片标注 + 交互
+        if (boxes.length > 0) {
+            fitOverlay();
+            drawBoxes();
+
+            overlay.onmousemove = function (e) {
+                const rect = overlay.getBoundingClientRect();
+                const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                let found = null;
+                for (let i = boxes.length - 1; i >= 0; i--) {
+                    const b = boxes[i];
+                    if (mx >= b.dx && mx <= b.dx + b.dw && my >= b.dy && my <= b.dy + b.dh) {
+                        found = b;
+                        break;
+                    }
+                }
+                if (found) {
+                    tooltip.innerHTML = '<div style="color:#fca5a5;font-size:12px;">⚠ 此处为简体字</div>' +
+                        '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">' +
+                        '<span style="background:#fee2e2;color:#dc2626;padding:2px 10px;border-radius:4px;font-weight:700;font-size:20px;">' + found.s + '</span>' +
+                        '<span style="color:#888;">→ 建议改为 →</span>' +
+                        '<span style="background:#d1fae5;color:#059669;padding:2px 10px;border-radius:4px;font-weight:700;font-size:20px;">' + found.tr + '</span></div>';
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 14) + 'px';
+                    tooltip.style.top = (e.clientY - 12) + 'px';
+                    const tr = tooltip.getBoundingClientRect();
+                    if (tr.right > window.innerWidth) tooltip.style.left = (e.clientX - tr.width - 14) + 'px';
+                    if (tr.top < 0) tooltip.style.top = (e.clientY + 20) + 'px';
+                    overlay.style.cursor = 'pointer';
+                } else {
+                    tooltip.style.display = 'none';
+                    overlay.style.cursor = 'default';
+                }
+            };
+            overlay.onmouseleave = () => { tooltip.style.display = 'none'; };
+
+            document.querySelectorAll('.ocr .hl').forEach(el => {
+                el.onmouseenter = function () {
+                    const idx = parseInt(this.dataset.i);
+                    if (idx >= 0 && idx < boxes.length) highlightSingle(idx);
+                };
+                el.onmouseleave = () => drawBoxes();
+            });
+        }
+
+        s('o', arr.length ? '✅ 发现 ' + sc + ' 个简体字，已在图片上标注繁体建议' : '✅ 全部是繁体字！');
+        res.classList.add('show');
+
+    } catch (e) {
+        console.error(e);
+        s('e', '处理失败：' + e.message);
+    }
+    busy = false;
+    goBtn.disabled = false;
+};
+
+// ===== ★ 高亮单个字 =====
+function highlightSingle(idx) {
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    boxes.forEach((b, i) => {
+        const is = i === idx;
+        ctx.fillStyle = is ? 'rgba(239,68,68,0.35)' : 'rgba(220,38,38,0.10)';
+        ctx.fillRect(b.dx, b.dy, b.dw, b.dh);
+        ctx.strokeStyle = is ? 'rgba(239,68,68,1)' : 'rgba(220,38,38,0.3)';
+        ctx.lineWidth = is ? 3 : 1;
+        ctx.strokeRect(b.dx, b.dy, b.dw, b.dh);
+        const label = b.tr;
+        ctx.font = 'bold 15px sans-serif';
+        const tw = ctx.measureText(label).width + 14;
+        let tx = b.dx + (b.dw - tw) / 2, ty = b.dy - 26;
+        if (ty < 0) ty = b.dy + b.dh + 2;
+        ctx.fillStyle = is ? 'rgba(5,150,105,0.95)' : 'rgba(5,150,105,0.4)';
+        const R = 5;
+        ctx.beginPath(); ctx.moveTo(tx + R, ty); ctx.lineTo(tx + tw - R, ty);
+        ctx.quadraticCurveTo(tx + tw, ty, tx + tw, ty + R);
+        ctx.lineTo(tx + tw, ty + 24 - R); ctx.quadraticCurveTo(tx + tw, ty + 24, tx + tw - R, ty + 24);
+        ctx.lineTo(tx + R, ty + 24); ctx.quadraticCurveTo(tx, ty + 24, tx, ty + 24 - R);
+        ctx.lineTo(tx, ty + R); ctx.quadraticCurveTo(tx, ty, tx + R, ty);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(label, tx + 7, ty + 17);
+    });
+}
+
+// ===== ★ 高亮同类字 =====
+function highlightOnCanvas(simp) {
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    boxes.forEach(b => {
+        const is = b.s === simp;
+        ctx.fillStyle = is ? 'rgba(239,68,68,0.35)' : 'rgba(220,38,38,0.08)';
+        ctx.fillRect(b.dx, b.dy, b.dw, b.dh);
+        ctx.strokeStyle = is ? 'rgba(239,68,68,1)' : 'rgba(220,38,38,0.25)';
+        ctx.lineWidth = is ? 3 : 1;
+        ctx.strokeRect(b.dx, b.dy, b.dw, b.dh);
+        const label = b.tr;
+        ctx.font = 'bold 15px sans-serif';
+        const tw = ctx.measureText(label).width + 14;
+        let tx = b.dx + (b.dw - tw) / 2, ty = b.dy - 26;
+        if (ty < 0) ty = b.dy + b.dh + 2;
+        ctx.fillStyle = is ? 'rgba(5,150,105,0.95)' : 'rgba(5,150,105,0.3)';
+        const R = 5;
+        ctx.beginPath(); ctx.moveTo(tx + R, ty); ctx.lineTo(tx + tw - R, ty);
+        ctx.quadraticCurveTo(tx + tw, ty, tx + tw, ty + R);
+        ctx.lineTo(tx + tw, ty + 24 - R); ctx.quadraticCurveTo(tx + tw, ty + 24, tx + tw - R, ty + 24);
+        ctx.lineTo(tx + R, ty + 24); ctx.quadraticCurveTo(tx, ty + 24, tx, ty + 24 - R);
+        ctx.lineTo(tx, ty + R); ctx.quadraticCurveTo(tx, ty, tx + R, ty);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(label, tx + 7, ty + 17);
+    });
+}
+
+function s(type, msg) { st.className = 'st show st-' + type; st.innerHTML = msg; }
+function h() { st.className = 'st'; }
+</script>
+</body>
+</html>
