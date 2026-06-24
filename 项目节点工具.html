@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>项目时间节点工具</title>
+  <style>
+    :root {
+      --ink:#17233d; --muted:#75829b; --line:rgba(117,139,190,.2);
+      --glass:rgba(255,255,255,.7); --blue:#6b75ed; --blue2:#758eff;
+      --shadow:0 18px 46px rgba(62,83,136,.12); --zoom:1;
+      font-family:"Microsoft YaHei UI","Microsoft YaHei","Noto Sans SC",Arial,sans-serif;
+    }
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;color:var(--ink);background:
+      radial-gradient(circle at 15% 0%,rgba(183,219,255,.38),transparent 34%),
+      linear-gradient(145deg,#edf6ff 0%,#fafcff 48%,#eef1ff 100%);font-size:14px}
+    button,input,textarea{font:inherit} button{cursor:pointer}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;
+      position:sticky;top:0;z-index:20;background:rgba(255,255,255,.62);backdrop-filter:blur(20px);
+      border-bottom:1px solid rgba(255,255,255,.85);box-shadow:0 8px 30px rgba(75,94,140,.07)}
+    .brand{display:flex;gap:12px;align-items:center}.brand-mark{width:36px;height:36px;border-radius:10px;
+      display:grid;place-items:center;color:#fff;font-weight:900;background:linear-gradient(135deg,var(--blue),#8b68ec);
+      box-shadow:0 8px 20px rgba(101,111,235,.28)} h1{font-size:18px;margin:0}.save-state{font-size:11px;color:var(--muted);margin-top:2px}
+    .actions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:rgba(255,255,255,.72);
+      border-radius:9px;padding:9px 14px;color:var(--ink);box-shadow:0 5px 14px rgba(72,93,144,.06)}
+    .btn.primary{color:#fff;border:0;background:linear-gradient(135deg,var(--blue),#7e6de9);
+      box-shadow:0 8px 22px rgba(101,111,235,.26)}.btn.danger{color:#d46773}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;padding:14px}
+    .workspace{min-width:0;display:grid;gap:14px}.panel,.sidebar{background:rgba(255,255,255,.55);
+      border:1px solid rgba(255,255,255,.9);backdrop-filter:blur(22px);box-shadow:var(--shadow);border-radius:14px}
+    .panel-head,.sidebar-head{padding:17px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .panel-title{font-size:15px;font-weight:800}.subtitle{font-size:11px;color:var(--muted);margin-top:4px}
+    .timeline-scroll{overflow:auto;padding:0 16px 18px;min-height:530px}
+    .timeline-stage{position:relative;height:500px;min-width:1000px;width:max(100%,calc(var(--count)*220px));
+      transform-origin:top left;transition:width .18s ease}
+    .timeline-name{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:min(520px,50%);
+      border:1px solid transparent;background:transparent;text-align:center;color:var(--ink);font-size:34px;font-weight:800;
+      font-synthesis:none;letter-spacing:0;border-radius:10px;padding:6px 12px;cursor:text;user-select:text;z-index:5}
+    .timeline-name:hover,.timeline-name:focus{outline:0;border-color:var(--line);background:rgba(255,255,255,.5)}
+    .timeline-name::placeholder{color:#9aa6bd;opacity:1}
+    .axis{position:absolute;top:154px;left:55px;right:55px;height:1px;z-index:0;background:linear-gradient(90deg,transparent,#91a9eb 8%,#91a9eb 92%,transparent)}
+    .axis:before,.axis:after{content:"";position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:#7691ee;box-shadow:0 0 14px #7590ee}
+    .axis:before{left:0}.axis:after{right:0}.nodes{position:absolute;left:55px;right:55px;top:0;height:100%;z-index:1;display:grid;grid-template-columns:repeat(var(--count),minmax(180px,1fr));gap:24px}
+    .node{position:relative;min-width:0}.date{position:absolute;top:104px;left:50%;transform:translateX(-50%);
+      width:142px;height:38px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.77);text-align:center;
+      color:var(--ink);font-weight:700;padding:0 8px;box-shadow:0 7px 18px rgba(74,91,145,.08)}
+    .dot{position:absolute;top:148px;left:50%;transform:translateX(-50%);width:13px;height:13px;border:3px solid white;border-radius:50%;
+      background:#758eff;box-shadow:0 0 0 1px #758eff,0 0 15px rgba(99,126,239,.65)}
+    .stem{position:absolute;top:161px;left:50%;height:42px;width:1px;background:rgba(110,137,202,.35)}
+    .node-card{position:absolute;top:202px;left:50%;transform:translateX(-50%);width:180px;height:225px;min-width:150px;min-height:180px;
+      max-width:290px;max-height:320px;resize:both;overflow:auto;padding:12px;border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(247,249,255,.58));
+      border:1px solid rgba(255,255,255,.95);box-shadow:0 18px 36px rgba(70,89,137,.13);transition:transform .18s,box-shadow .18s}
+    .node-card:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,#6a78ed,#8c6de9);border-radius:14px 14px 0 0}
+    .node-card:hover{transform:translateX(-50%) translateY(-4px) scale(1.01);box-shadow:0 24px 44px rgba(70,89,137,.18)}
+    .card-name,.card-content{width:100%;border:1px solid rgba(126,145,190,.2);border-radius:9px;background:rgba(255,255,255,.5);color:var(--ink);text-align:center}
+    .card-name{height:46px;font-size:16px;font-weight:800;padding:8px}.card-content{height:calc(100% - 58px);min-height:90px;margin-top:10px;resize:none;padding:14px;line-height:1.7}
+    .projects{padding:14px}.project-list{display:grid;gap:9px;padding:12px;border-radius:12px;background:rgba(241,248,255,.56)}
+    .project-row{display:grid;grid-template-columns:minmax(110px,28%) minmax(220px,1fr) 38px;gap:10px}.field,.icon-btn{
+      height:39px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.74);color:var(--ink);padding:0 11px}
+    .icon-btn{padding:0;color:#d26773}.sidebar{height:calc(100vh - 102px);position:sticky;top:88px;overflow:hidden}
+    .editors{height:calc(100% - 72px);overflow:auto;padding:12px;display:grid;gap:10px;align-content:start}
+    .editor{padding:13px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.64)}
+    .editor-top{display:flex;justify-content:space-between;font-weight:800;margin-bottom:10px}.editor label{display:grid;gap:5px;color:var(--muted);font-size:11px;margin-top:8px}
+    .editor input,.editor textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.78);padding:8px;color:var(--ink)}
+    .editor textarea{height:72px;resize:vertical}.editor-actions{display:flex;gap:7px;margin-top:10px}.editor-actions button{font-size:11px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff}
+    @media(max-width:1000px){.layout{grid-template-columns:1fr}.sidebar{position:relative;top:0;height:auto}.editors{max-height:520px}.topbar{height:auto;gap:12px;padding:12px;flex-wrap:wrap}}
+    @media(max-width:650px){.actions{flex-wrap:wrap}.project-row{grid-template-columns:1fr 38px}.project-row .field:nth-child(2){grid-column:1/2}.timeline-name{font-size:25px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">↗</div><div><h1>项目时间节点工具</h1><div class="save-state" id="saveState">读取本地数据中</div></div></div>
+    <div class="actions">
+      <button class="btn primary" id="addNode">新增节点</button><button class="btn" id="save">保存</button>
+      <button class="btn primary" id="export">导出 JPG</button><button class="btn danger" id="reset">清空</button>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="workspace">
+      <section class="panel">
+        <div class="panel-head"><div><div class="panel-title">横向时间轴</div><div class="subtitle">点击日期选择时间，Ctrl + 鼠标滚轮缩放时间轴，拖动卡片右下角调整尺寸。</div></div></div>
+        <div class="timeline-scroll" id="scroll"><div class="timeline-stage" id="stage"><input class="timeline-name" id="timelineName" type="text" spellcheck="false" placeholder="时间轴名称" aria-label="时间轴名称"><div class="axis"></div><div class="nodes" id="nodes"></div></div></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div class="panel-title">项目与负责人</div><button class="btn primary" id="addProject">增加栏目</button></div>
+        <div class="projects"><div class="project-list" id="projects"></div></div>
+      </section>
+    </section>
+    <aside class="sidebar"><div class="sidebar-head"><div><div class="panel-title">节点编辑</div><div class="subtitle">节点按日期自动排列。</div></div></div><div class="editors" id="editors"></div></aside>
+  </main>
+  <script>
+    const KEY="projectTimelineTool.v1";
+    const uid=()=>crypto.randomUUID?.()||Date.now()+"-"+Math.random();
+    const plus=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x.toISOString().slice(0,10)};
+    const seed={timelineName:"2026-3am视觉",zoom:1,projects:[{id:uid(),owner:"张明",name:"新品上市计划"}],nodes:[
+      {id:uid(),date:"2026-06-08",name:"Brief",content:"开始延展方案",owner:"张明",w:180,h:225},
+      {id:uid(),date:"2026-06-12",name:"方案过稿",content:"多个方案选一",owner:"李娜",w:180,h:225},
+      {id:uid(),date:"2026-06-19",name:"第一轮过稿",content:"KV、TOP\\n宫格区\\n直播间\\n橱窗",owner:"王磊",w:180,h:225},
+      {id:uid(),date:"2026-06-24",name:"完稿",content:"KV、TOP\\n宫格区\\n直播间\\n橱窗",owner:"赵敏",w:180,h:225},
+      {id:uid(),date:"2026-07-01",name:"正式上线",content:"多渠道同步",owner:"陈宇",w:180,h:225}
+    ]};
+    let state=load();
+    const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x?.nodes){return {...seed,...x,
+      timelineName:x.timelineName||x.projectName||seed.timelineName,
+      zoom:Number(x.zoom||x.timelineZoom)||1,
+      projects:Array.isArray(x.projects)&&x.projects.length?x.projects:seed.projects,
+      nodes:x.nodes.map(n=>({...n,name:n.name||n.title||"",content:n.content||n.note||"",owner:n.owner||"",w:n.w||n.cardWidth||180,h:n.h||n.cardHeight||225}))
+    }}}catch{}return structuredClone(seed)}
+    function persist(render=false,msg="已自动保存"){localStorage.setItem(KEY,JSON.stringify(state));$("#saveState").textContent=msg+" "+new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});if(render)draw()}
+    function sorted(){return [...state.nodes].sort((a,b)=>a.date.localeCompare(b.date))}
+    function draw(){
+      $("#stage").style.setProperty("--count",Math.max(5,state.nodes.length));$("#stage").style.width=`max(100%, ${Math.max(1000,state.nodes.length*220*state.zoom)}px)`;
+      if(document.activeElement!==$("#timelineName"))$("#timelineName").value=state.timelineName;drawNodes();drawEditors();drawProjects();
+    }
+    function drawNodes(){
+      $("#nodes").innerHTML=sorted().map(n=>`<div class="node" data-id="${n.id}">
+        <input class="date" type="date" data-k="date" value="${esc(n.date)}"><span class="dot"></span><span class="stem"></span>
+        <div class="node-card" style="width:${n.w||180}px;height:${n.h||225}px"><input class="card-name" data-k="name" value="${esc(n.name)}" placeholder="填写项目名称"><textarea class="card-content" data-k="content" placeholder="编辑项目内容">${esc(n.content)}</textarea></div></div>`).join("");
+      $("#nodes").querySelectorAll("[data-k]").forEach(el=>el.oninput=e=>{const n=state.nodes.find(x=>x.id===e.target.closest(".node").dataset.id);n[e.target.dataset.k]=e.target.value;persist(e.target.dataset.k==="date")});
+      $("#nodes").querySelectorAll(".node-card").forEach(card=>card.onmouseup=e=>{const n=state.nodes.find(x=>x.id===e.currentTarget.closest(".node").dataset.id);n.w=Math.round(e.currentTarget.offsetWidth);n.h=Math.round(e.currentTarget.offsetHeight);persist()});
+    }
+    function drawEditors(){
+      $("#editors").innerHTML=sorted().map((n,i)=>`<div class="editor" data-id="${n.id}"><div class="editor-top"><span>节点 ${i+1}</span><span>${esc(n.date)}</span></div>
+        <label>时间<input type="date" data-k="date" value="${esc(n.date)}"></label><label>项目名称<input data-k="name" value="${esc(n.name)}"></label>
+        <label>项目内容<textarea data-k="content">${esc(n.content)}</textarea></label><label>负责人<input data-k="owner" value="${esc(n.owner)}"></label>
+        <div class="editor-actions"><button data-copy>复制</button><button data-del>删除</button></div></div>`).join("");
+      $("#editors").querySelectorAll("[data-k]").forEach(el=>el.oninput=e=>{const n=state.nodes.find(x=>x.id===e.target.closest(".editor").dataset.id);n[e.target.dataset.k]=e.target.value;persist(true)});
+      $("#editors").querySelectorAll("[data-copy]").forEach(b=>b.onclick=e=>{const n=state.nodes.find(x=>x.id===e.target.closest(".editor").dataset.id);state.nodes.push({...n,id:uid(),date:plus(n.date,1),name:n.name+" 副本"});persist(true)});
+      $("#editors").querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{state.nodes=state.nodes.filter(x=>x.id!==e.target.closest(".editor").dataset.id);persist(true)});
+    }
+    function drawProjects(){
+      $("#projects").innerHTML=state.projects.map(p=>`<div class="project-row" data-id="${p.id}"><input class="field" data-k="owner" value="${esc(p.owner)}" placeholder="负责人"><input class="field" data-k="name" value="${esc(p.name)}" placeholder="项目名称"><button class="icon-btn" data-del>×</button></div>`).join("");
+      $("#projects").querySelectorAll("[data-k]").forEach(el=>el.oninput=e=>{const p=state.projects.find(x=>x.id===e.target.closest(".project-row").dataset.id);p[e.target.dataset.k]=e.target.value;persist()});
+      $("#projects").querySelectorAll("[data-del]").forEach(b=>b.onclick=e=>{state.projects=state.projects.filter(x=>x.id!==e.target.closest(".project-row").dataset.id);persist(true)});
+    }
+    $("#timelineName").oninput=e=>{state.timelineName=e.target.value;persist()};
+    $("#timelineName").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur()}};
+    $("#addNode").onclick=()=>{const last=sorted().at(-1);state.nodes.push({id:uid(),date:plus(last?.date||new Date(),7),name:"新节点",content:"",owner:"",w:180,h:225});persist(true)};
+    $("#addProject").onclick=()=>{state.projects.push({id:uid(),owner:"",name:""});persist(true)};
+    $("#save").onclick=()=>persist(false,"已保存");
+    $("#reset").onclick=()=>{if(confirm("确认清空当前内容并恢复示例数据？")){state=structuredClone(seed);persist(true,"已恢复")}};
+    $("#scroll").onwheel=e=>{if(!e.ctrlKey)return;e.preventDefault();state.zoom=Math.min(1.8,Math.max(.65,state.zoom+(e.deltaY<0?.1:-.1)));persist(true,`时间轴缩放 ${Math.round(state.zoom*100)}%`)};
+    $("#export").onclick=exportJpg;
+    async function exportJpg(){
+      const ns=sorted(),cw=250,ch=300,gap=45,pad=90,w=Math.max(1500,pad*2+ns.length*(cw+gap)),projectH=Math.max(180,90+state.projects.length*55),h=650+projectH;
+      const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#f5f8ff";x.fillRect(0,0,w,h);
+      x.fillStyle="#17233d";x.textAlign="center";x.font='800 52px "Microsoft YaHei UI","Microsoft YaHei",sans-serif';x.fillText(state.timelineName||"项目时间轴",w/2,80);
+      x.strokeStyle="#91a9eb";x.lineWidth=2;x.beginPath();x.moveTo(pad,190);x.lineTo(w-pad,190);x.stroke();
+      ns.forEach((n,i)=>{const cx=pad+cw/2+i*(cw+gap);x.fillStyle="#758eff";x.beginPath();x.arc(cx,190,7,0,Math.PI*2);x.fill();x.strokeStyle="#cbd7f4";x.beginPath();x.moveTo(cx,197);x.lineTo(cx,235);x.stroke();
+        round(x,cx-80,125,160,42,9,"#fff","#dfe5f3");x.fillStyle="#25324d";x.font='700 20px "Microsoft YaHei",sans-serif';x.fillText(n.date,cx,152);
+        round(x,cx-cw/2,235,cw,ch,14,"#fff","#e2e7f4");x.fillStyle="#25324d";x.font='800 24px "Microsoft YaHei",sans-serif';lines(x,n.name,cx,280,cw-30,30,2);
+        x.fillStyle="#65728c";x.font='20px "Microsoft YaHei",sans-serif';lines(x,n.content,cx,345,cw-32,29,6)});
+      x.textAlign="left";x.fillStyle="#17233d";x.font='800 28px "Microsoft YaHei",sans-serif';x.fillText("项目与负责人",pad,610);
+      round(x,pad,630,w-pad*2,projectH,14,"#fff","#e2e7f4");state.projects.forEach((p,i)=>{const y=680+i*55;x.fillStyle="#25324d";x.font='700 20px "Microsoft YaHei",sans-serif';x.fillText(p.owner||"未填写",pad+25,y);x.fillText(p.name||"未填写",pad+360,y)});
+      const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.94)),name=(state.timelineName||"项目时间轴").replace(/[\\/:*?"<>|]/g,"_")+".jpg";
+      if(window.showSaveFilePicker)try{const fh=await showSaveFilePicker({suggestedName:name,types:[{description:"JPG 图片",accept:{"image/jpeg":[".jpg"]}}]});const wr=await fh.createWritable();await wr.write(blob);await wr.close();$("#saveState").textContent="JPG 已导出";return}catch(e){if(e.name==="AbortError")return}
+      const a=document.createElement("a"),u=URL.createObjectURL(blob);a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)
+    }
+    function round(x,a,b,w,h,r,fill,stroke){x.beginPath();x.roundRect(a,b,w,h,r);x.fillStyle=fill;x.fill();x.strokeStyle=stroke;x.stroke()}
+    function lines(x,t,cx,y,max,lh,count){const arr=String(t||"").split(/\\n/).slice(0,count);arr.forEach((s,i)=>x.fillText(s.length>16?s.slice(0,15)+"…":s,cx,y+i*lh,max))}
+    draw();persist(false,"已加载");
+  </script>
+</body>
+</html>

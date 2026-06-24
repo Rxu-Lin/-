@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片切片导出工具</title>
+<style>
+  :root {
+    --bg: #0f0f13; --surface: #1a1a24; --surface2: #22222e; --border: #2e2e3e;
+    --text: #e0e0f0; --text-dim: #8080a0; --accent: #5b5fdf; --accent-hover: #7070f0;
+    --slice-line: rgba(255, 80, 80, 0.85); --slice-line-hover: rgba(255, 120, 120, 1);
+    --radius: 10px; --sidebar-w: 300px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100vh; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* === Header (compact) === */
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+  .header h1 { font-size: 1.05rem; font-weight: 600; white-space: nowrap; }
+  .header .subtitle { color: var(--text-dim); font-size: 0.8rem; white-space: nowrap; }
+  .header-spacer { flex: 1; }
+
+  /* === Main layout: sidebar | canvas === */
+  .main {
+    flex: 1; display: flex; overflow: hidden;
+  }
+
+  /* --- Sidebar (left) --- */
+  .sidebar {
+    width: var(--sidebar-w); min-width: var(--sidebar-w);
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 16px; border-right: 1px solid var(--border);
+    background: var(--bg); overflow-y: auto; flex-shrink: 0;
+  }
+
+  /* Upload zone in sidebar */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 28px 14px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface); position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(91,95,223,0.06); }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .upload-text { font-size: 0.85rem; color: var(--text); margin-bottom: 4px; }
+  .upload-hint { font-size: 0.72rem; color: var(--text-dim); }
+
+  /* Settings grid */
+  .settings { display: grid; gap: 8px; }
+  .setting {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px;
+  }
+  .setting label {
+    display: block; font-size: 0.7rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
+  }
+  .setting input, .setting select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); padding: 6px 8px;
+    font-size: 0.88rem; outline: none; transition: border-color 0.2s;
+  }
+  .setting input:focus, .setting select:focus { border-color: var(--accent); }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex; gap: 0; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  }
+  .mode-btn {
+    flex: 1; padding: 7px; text-align: center; font-size: 0.78rem; cursor: pointer;
+    background: transparent; color: var(--text-dim); border: none;
+    transition: background 0.15s, color 0.15s; font-weight: 500;
+  }
+  .mode-btn.active { background: var(--accent); color: #fff; }
+  .mode-btn:not(.active):hover { background: var(--surface2); color: var(--text); }
+
+  /* Actions */
+  .actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 10px; }
+  .btn {
+    padding: 10px 18px; border: none; border-radius: 6px;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s, transform 0.08s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface); }
+
+  /* Info bar in sidebar */
+  .info-bar {
+    padding: 10px 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.78rem; color: var(--text-dim);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .info-bar span { color: var(--text); }
+
+  /* Hint text */
+  .hint-text { font-size: 0.75rem; color: var(--accent); line-height: 1.4; }
+
+  /* --- Canvas area (right) — takes all remaining space --- */
+  .canvas-area {
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+  }
+
+  /* Canvas toolbar (top of canvas area) */
+  .canvas-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface2); flex-shrink: 0; font-size: 0.78rem; color: var(--text-dim);
+  }
+  .canvas-toolbar button {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); width: 26px; height: 26px; font-size: 0.95rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+  }
+  .canvas-toolbar button:hover { background: var(--accent); color: #fff; }
+  .canvas-toolbar .zoom-val { color: var(--text); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+  .canvas-toolbar .spacer { flex: 1; }
+  .canvas-toolbar .info-inline { color: var(--text-dim); font-size: 0.76rem; }
+
+  /* Preview wrap — fills remaining space */
+  .preview-wrap {
+    flex: 1; overflow: hidden; position: relative; cursor: grab;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+  .preview-wrap.panning { cursor: grabbing; }
+  #canvas-scroll-area {
+    width: 100%; height: 100%; overflow: auto; position: relative;
+  }
+  #canvas-transform { position: absolute; top: 0; left: 0; transform-origin: 0 0; display: inline-block; }
+  #canvas-container { position: relative; display: inline-block; user-select: none; }
+  #main-canvas { display: block; position: absolute; top: 0; left: 0; }
+  #line-canvas { display: block; position: absolute; top: 0; left: 0; z-index: 10; pointer-events: none; }
+  #hit-layer { position: absolute; top: 0; left: 0; z-index: 11; cursor: crosshair; }
+
+  /* Draggable lines overlay */
+  #lines-overlay { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+  .drag-line {
+    position: absolute; left: 0; width: 100%; cursor: ns-resize;
+    height: 18px; transform: translateY(-50%); display: flex; align-items: center;
+    z-index: 12; pointer-events: auto;
+  }
+  .drag-line:hover .drag-line-bar,
+  .drag-line.active .drag-line-bar {
+    background: var(--slice-line-hover); height: 3px;
+    box-shadow: 0 0 8px rgba(255,80,80,0.6);
+  }
+  .drag-line-bar {
+    width: 100%; height: 2px; background: var(--slice-line);
+    transition: background 0.15s, height 0.15s; pointer-events: none;
+  }
+  .drag-line-label {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    font-size: 0.58rem; color: #fff; background: rgba(255,60,60,0.82);
+    padding: 1px 4px; border-radius: 3px; font-weight: 600;
+    font-family: monospace; pointer-events: none; white-space: nowrap;
+  }
+  .drag-line:hover .drag-line-label,
+  .drag-line.active .drag-line-label { background: rgba(255,100,100,1); }
+  .drag-line-del {
+    position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    font-size: 0.68rem; color: #fff; background: rgba(255,60,60,0.7);
+    border: none; border-radius: 50%; width: 15px; height: 15px;
+    line-height: 15px; text-align: center; cursor: pointer;
+    pointer-events: auto; display: none; z-index: 20;
+  }
+  .drag-line:hover .drag-line-del { display: block; }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 800px) {
+    :root { --sidebar-w: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🖼️ 图片切片导出工具</h1>
+  <span class="subtitle">上传长图 → 设置切片 → 导出 ZIP</span>
+  <div class="header-spacer"></div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Upload -->
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">📂</div>
+      <div class="upload-text">点击或拖拽图片到此处</div>
+      <div class="upload-hint">PNG / JPG / WEBP / GIF / BMP</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <!-- Settings -->
+    <div class="settings hidden" id="settingsPanel">
+      <div class="setting"><label>每片高度 (px)</label><input type="number" id="sliceHeight" value="800" min="1" max="10000"></div>
+      <div class="setting"><label>导出格式</label><select id="format"><option value="image/png">PNG</option><option value="image/jpeg">JPG</option></select></div>
+      <div class="setting"><label>JPG 质量 (1-100)</label><input type="number" id="jpgQuality" value="92" min="1" max="100"></div>
+      <div class="setting"><label>文件名前缀</label><input type="text" id="filePrefix" value="slice" placeholder="slice"></div>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle hidden" id="modeToggle">
+      <button class="mode-btn active" data-mode="uniform">等分模式</button>
+      <button class="mode-btn" data-mode="free">自由拖拽模式</button>
+    </div>
+
+    <!-- Hints -->
+    <div class="hint-text hidden" id="uniformHint">等分模式：修改「每片高度」自动调整切片线位置。</div>
+    <div class="hint-text hidden" id="freeHint">自由模式：单击画布添加切片线，拖拽调整位置，悬停点 × 删除。</div>
+
+    <!-- Info -->
+    <div class="info-bar hidden" id="infoBar">
+      <div>尺寸: <span id="infoSize">—</span></div>
+      <div>切片数: <span id="infoCount">—</span></div>
+      <div>预估大小: <span id="infoEst">—</span></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions hidden" id="actionsPanel">
+      <button class="btn btn-secondary" id="btnPreview">🔄 刷新预览</button>
+      <button class="btn btn-primary" id="btnDownload">📦 导出所有切片 (ZIP)</button>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- Canvas Area -->
+  <div class="canvas-area" id="canvasArea">
+
+    <!-- Toolbar -->
+    <div class="canvas-toolbar hidden" id="toolbar">
+      <button id="zoomOut" title="缩小">−</button>
+      <span class="zoom-val" id="zoomVal">100%</span>
+      <button id="zoomIn" title="放大">+</button>
+      <button id="zoomReset" title="重置缩放">↺</button>
+      <button id="zoomFit" title="适应窗口">⊞</button>
+      <div class="spacer"></div>
+      <span class="info-inline" id="previewInfo">请上传图片</span>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-wrap" id="previewWrap">
+      <div id="canvas-scroll-area">
+        <div id="canvas-transform">
+          <div id="canvas-container">
+            <canvas id="main-canvas"></canvas>
+            <canvas id="line-canvas"></canvas>
+            <canvas id="hit-layer"></canvas>
+            <div id="lines-overlay"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /canvas-area -->
+
+</div><!-- /main -->
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  let originalImage = null;
+  let mode = 'uniform';
+  let freeCutPositions = [];
+  let scale = 1;
+  let panX = 0, panY = 0;
+
+  const uploadZone      = $('uploadZone');
+  const fileInput       = $('fileInput');
+  const settingsPanel   = $('settingsPanel');
+  const sliceHeightEl   = $('sliceHeight');
+  const formatEl        = $('format');
+  const jpgQualityEl    = $('jpgQuality');
+  const filePrefixEl     = $('filePrefix');
+  const mainCanvas      = $('main-canvas');
+  const lineCanvas      = $('line-canvas');
+  const hitLayer        = $('hit-layer');
+  const linesOverlay    = $('lines-overlay');
+  const canvasContainer = $('canvas-container');
+  const canvasTransform = $('canvas-transform');
+  const scrollArea      = $('canvas-scroll-area');
+  const previewWrap     = $('previewWrap');
+  const toolbar         = $('toolbar');
+  const zoomVal         = $('zoomVal');
+  const previewInfo     = $('previewInfo');
+  const freeHint        = $('freeHint');
+  const uniformHint     = $('uniformHint');
+  const infoBar         = $('infoBar');
+  const infoSize        = $('infoSize');
+  const infoCount       = $('infoCount');
+  const infoEst         = $('infoEst');
+  const actionsPanel    = $('actionsPanel');
+  const btnPreview      = $('btnPreview');
+  const btnDownload     = $('btnDownload');
+  const modeToggle      = $('modeToggle');
+
+  // --- Upload ---
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('drag');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+  function loadFile(file) {
+    if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        originalImage = img;
+        settingsPanel.classList.remove('hidden');
+        actionsPanel.classList.remove('hidden'); infoBar.classList.remove('hidden');
+        modeToggle.classList.remove('hidden'); toolbar.classList.remove('hidden');
+        uniformHint.classList.toggle('hidden', mode !== 'uniform');
+        freeHint.classList.toggle('hidden', mode !== 'free');
+        freeCutPositions = []; scale = 1; panX = 0; panY = 0;
+        updateTransform(); updatePreview();
+        setTimeout(zoomToFit, 50);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // --- Mode toggle ---
+  modeToggle.addEventListener('click', e => {
+    if (!e.target.classList.contains('mode-btn')) return;
+    const newMode = e.target.dataset.mode;
+    if (newMode === mode) return;
+    mode = newMode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    uniformHint.classList.toggle('hidden', mode !== 'uniform');
+    freeHint.classList.toggle('hidden', mode !== 'free');
+    freeCutPositions = []; updatePreview();
+  });
+
+  // --- Settings ---
+  sliceHeightEl.addEventListener('input', () => { if (mode === 'uniform') updatePreview(); });
+  formatEl.addEventListener('change', updateStats);
+  jpgQualityEl.addEventListener('input', updateStats);
+  filePrefixEl.addEventListener('input', updateStats);
+  btnPreview.addEventListener('click', () => { updatePreview(); });
+
+  // --- Zoom & Transform ---
+  function setScale(s) {
+    scale = Math.max(0.02, Math.min(32, s));
+    updateTransform();
+    zoomVal.textContent = Math.round(scale * 100) + '%';
+    drawLinesOnCanvas(); syncDragLinePositions();
+  }
+  function updateTransform() {
+    canvasTransform.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+  $('zoomIn').addEventListener('click', () => setScale(scale * 1.25));
+  $('zoomOut').addEventListener('click', () => setScale(scale / 1.25));
+  $('zoomReset').addEventListener('click', () => { scale = 1; panX = 0; panY = 0; updateTransform(); drawLinesOnCanvas(); syncDragLinePositions(); });
+  $('zoomFit').addEventListener('click', zoomToFit);
+
+  function zoomToFit() {
+    if (!originalImage) return;
+    const areaW = scrollArea.clientWidth - 40;
+    const areaH = scrollArea.clientHeight - 40;
+    const s = Math.min(areaW / originalImage.naturalWidth, areaH / originalImage.naturalHeight, 1);
+    scale = s; panX = 0; panY = 0;
+    updateTransform(); zoomVal.textContent = Math.round(scale * 100) + '%';
+    drawLinesOnCanvas(); syncDragLinePositions();
+  }
+
+  // Wheel zoom
+  scrollArea.addEventListener('wheel', e => {
+    if (!originalImage) return; e.preventDefault();
+    const rect = scrollArea.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+    const imgX = (mouseX - panX) / scale, imgY = (mouseY - panY) / scale;
+    const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
+    const newScale = Math.max(0.02, Math.min(32, scale * factor));
+    panX = mouseX - imgX * newScale; panY = mouseY - imgY * newScale;
+    setScale(newScale);
+  }, { passive: false });
+
+  // Pan
+  let panning = false, panStartX, panStartY, panOrigX, panOrigY;
+  previewWrap.addEventListener('mousedown', e => {
+    if (e.target.closest('.drag-line') || e.target.closest('.drag-line-del')) return;
+    panning = true; previewWrap.classList.add('panning');
+    panStartX = e.clientX; panStartY = e.clientY; panOrigX = panX; panOrigY = panY;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!panning) return;
+    panX = panOrigX + (e.clientX - panStartX); panY = panOrigY + (e.clientY - panStartY);
+    updateTransform(); syncDragLinePositions();
+  });
+  window.addEventListener('mouseup', () => { if (panning) { panning = false; previewWrap.classList.remove('panning'); } });
+
+  // Click to add cut line (free mode)
+  hitLayer.addEventListener('pointerdown', e => {
+    if (mode !== 'free' || !originalImage) return;
+    if (e.target.closest('.drag-line')) return;
+    const rect = hitLayer.getBoundingClientRect();
+    const clickY = (e.clientY - rect.top) / scale;
+    const imgY = Math.round(clickY);
+    if (imgY <= 0 || imgY >= originalImage.naturalHeight) return;
+    freeCutPositions.push(imgY); freeCutPositions.sort((a, b) => a - b);
+    updatePreview();
+  });
+
+  // --- Compute slices ---
+  function getSlices() {
+    if (!originalImage) return [];
+    if (mode === 'uniform') {
+      const H = Math.max(1, parseInt(sliceHeightEl.value) || 800);
+      const slices = []; let y = 0;
+      while (y < originalImage.naturalHeight) {
+        slices.push({ top: y, height: Math.min(H, originalImage.naturalHeight - y) }); y += H;
+      }
+      return slices;
+    } else {
+      const cuts = [...freeCutPositions, originalImage.naturalHeight].sort((a, b) => a - b);
+      const slices = []; let prev = 0;
+      for (const cut of cuts) { if (cut > prev) { slices.push({ top: prev, height: cut - prev }); prev = cut; } }
+      return slices;
+    }
+  }
+
+  // --- Render image canvas ---
+  function updatePreview() {
+    if (!originalImage) return;
+    const ctx = mainCanvas.getContext('2d');
+    mainCanvas.width  = originalImage.naturalWidth;
+    mainCanvas.height = originalImage.naturalHeight;
+    ctx.drawImage(originalImage, 0, 0);
+
+    lineCanvas.width  = originalImage.naturalWidth; lineCanvas.height = originalImage.naturalHeight;
+    hitLayer.width    = originalImage.naturalWidth; hitLayer.height   = originalImage.naturalHeight;
+    canvasContainer.style.width  = originalImage.naturalWidth + 'px';
+    canvasContainer.style.height = originalImage.naturalHeight + 'px';
+
+    const slices = getSlices();
+    previewInfo.textContent =
+      `${originalImage.naturalWidth}×${originalImage.naturalHeight}  ·  ` +
+      (mode === 'uniform' ? '每片 ' + sliceHeightEl.value + 'px' : freeCutPositions.length + ' 条自由线') +
+      `  ·  ${slices.length} 片`;
+
+    drawLinesOnCanvas(); renderDragLines(); updateStats();
+  }
+
+  // --- Draw slice lines ON CANVAS ---
+  function drawLinesOnCanvas() {
+    const ctx = lineCanvas.getContext('2d');
+    ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+    if (!originalImage || lineCanvas.width <= 0 || lineCanvas.height <= 0) return;
+    const W = lineCanvas.width;
+
+    if (mode === 'uniform') {
+      const H = Math.max(1, parseInt(sliceHeightEl.value) || 800);
+      let y = H;
+      while (y < originalImage.naturalHeight) {
+        ctx.strokeStyle = 'rgba(255, 80, 80, 0.92)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 80, 80, 0.22)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); ctx.stroke();
+
+        const idx = Math.floor(y / H);
+        ctx.fillStyle = 'rgba(255, 55, 55, 0.86)';
+        ctx.font = 'bold 11px monospace';
+        const label = '#' + (idx + 1);
+        const tw = ctx.measureText(label).width;
+        ctx.fillRect(W - tw - 14, y - 7, tw + 8, 15);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, W - tw - 10, y + 4);
+        y += H;
+      }
+    } else {
+      const sorted = [...freeCutPositions].sort((a,b)=>a-b);
+      sorted.forEach(cutY => {
+        ctx.strokeStyle = 'rgba(255, 80, 80, 0.75)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0, cutY + 0.5); ctx.lineTo(W, cutY + 0.5); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 80, 80, 0.18)';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, cutY + 0.5); ctx.lineTo(W, cutY + 0.5); ctx.stroke();
+      });
+    }
+  }
+
+  // --- Draggable DOM lines (free mode) ---
+  function renderDragLines() {
+    linesOverlay.innerHTML = '';
+    if (mode !== 'free' || !originalImage) return;
+    const sortedCuts = [...freeCutPositions].sort((a, b) => a - b);
+    sortedCuts.forEach((cutY, i) => {
+      const div = document.createElement('div');
+      div.className = 'drag-line'; div.dataset.idx = i;
+      div.style.top = (cutY * scale) + 'px';
+
+      const bar = document.createElement('div'); bar.className = 'drag-line-bar'; div.appendChild(bar);
+      const label = document.createElement('div'); label.className = 'drag-line-label';
+      updateLabel(label, cutY, i); div.appendChild(label);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'drag-line-del'; delBtn.textContent = '×'; delBtn.title = '删除此切片线';
+      delBtn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const idx = parseInt(div.dataset.idx);
+        const sorted = [...freeCutPositions].sort((a,b)=>a-b);
+        const arrIdx = freeCutPositions.indexOf(sorted[idx]);
+        if (arrIdx >= 0) { freeCutPositions.splice(arrIdx, 1); updatePreview(); }
+      });
+      div.appendChild(delBtn);
+      div.addEventListener('pointerdown', e => startDrag(e, i, div));
+      linesOverlay.appendChild(div);
+    });
+  }
+
+  function syncDragLinePositions() {
+    if (mode !== 'free') return;
+    const sorted = [...freeCutPositions].sort((a,b)=>a-b);
+    linesOverlay.querySelectorAll('.drag-line').forEach(el => {
+      const idx = parseInt(el.dataset.idx);
+      if (idx >= 0 && idx < sorted.length) el.style.top = (sorted[idx] * scale) + 'px';
+    });
+  }
+
+  function updateLabel(labelEl, cutY, idx) {
+    const sorted = [...freeCutPositions].sort((a, b) => a - b);
+    const prev = idx === 0 ? 0 : sorted[idx - 1];
+    labelEl.textContent = `${Math.round(cutY)}px ↓${Math.round(cutY - prev)}px`;
+  }
+
+  // --- Drag logic ---
+  let dragState = null;
+  function startDrag(e, idx, el) {
+    e.preventDefault(); e.stopPropagation();
+    const startY = e.clientY;
+    const sorted = [...freeCutPositions].sort((a,b)=>a-b);
+    dragState = { idx, startY, startCut: sorted[idx], el };
+    document.addEventListener('pointermove', onDrag);
+    document.addEventListener('pointerup', endDrag);
+    el.classList.add('active');
+    document.body.style.cursor = 'ns-resize';
+  }
+  function onDrag(e) {
+    if (!dragState) return;
+    const dy = (e.clientY - dragState.startY) / scale;
+    let newY = Math.round(dragState.startCut + dy);
+    newY = Math.max(1, Math.min(originalImage.naturalHeight - 1, newY));
+    const sorted = [...freeCutPositions].sort((a,b)=>a-b);
+    const prev = dragState.idx === 0 ? 0 : sorted[dragState.idx - 1] + 1;
+    const next = dragState.idx === sorted.length - 1 ? originalImage.naturalHeight - 1 : sorted[dragState.idx + 1] - 1;
+    newY = Math.max(prev, Math.min(next, newY));
+    const realVal = sorted[dragState.idx];
+    const arrIdx = freeCutPositions.indexOf(realVal);
+    if (arrIdx >= 0) freeCutPositions[arrIdx] = newY;
+    dragState.el.style.top = (newY * scale) + 'px';
+    const label = dragState.el.querySelector('.drag-line-label');
+    updateLabel(label, newY, dragState.idx);
+    drawLinesOnCanvas(); updateStats();
+  }
+  function endDrag() {
+    if (!dragState) return;
+    dragState.el.classList.remove('active');
+    document.removeEventListener('pointermove', onDrag);
+    document.removeEventListener('pointerup', endDrag);
+    dragState = null; document.body.style.cursor = '';
+    updatePreview();
+  }
+
+  // --- Stats ---
+  function updateStats() {
+    if (!originalImage) return;
+    const slices = getSlices();
+    const fmt = formatEl.value;
+    const quality = parseInt(jpgQualityEl.value) / 100;
+    infoSize.textContent = `${originalImage.naturalWidth} × ${originalImage.naturalHeight}`;
+    infoCount.textContent = slices.length;
+    if (slices.length === 0) { infoEst.textContent = '—'; return; }
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width  = originalImage.naturalWidth;
+    tmpCanvas.height = Math.max(1, slices[0].height);
+    const tctx = tmpCanvas.getContext('2d');
+    tctx.drawImage(originalImage, 0, slices[0].top, tmpCanvas.width, slices[0].height, 0, 0, tmpCanvas.width, tmpCanvas.height);
+    const dataUrl = tmpCanvas.toDataURL(fmt, fmt === 'image/jpeg' ? quality : undefined);
+    const b64Len = dataUrl.indexOf(',') >= 0 ? dataUrl.length - dataUrl.indexOf(',') - 1 : 0;
+    infoEst.textContent = '≈ ' + formatBytes(Math.round(b64Len * 0.75 * slices.length));
+  }
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+
+  // --- Download ---
+  btnDownload.addEventListener('click', async () => {
+    if (!originalImage) return;
+    const slices = getSlices();
+    if (slices.length === 0) return;
+    btnDownload.disabled = true; btnDownload.textContent = '⏳ 处理中…';
+    try {
+      const fmt = formatEl.value;
+      const quality = parseInt(jpgQualityEl.value) / 100;
+      const prefix = (filePrefixEl.value || 'slice').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5\-]/g, '_');
+      const total = slices.length;
+      const zip = new JSZip();
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d');
+      for (let i = 0; i < total; i++) {
+        const s = slices[i];
+        offCanvas.width = originalImage.naturalWidth; offCanvas.height = s.height;
+        offCtx.clearRect(0, 0, offCanvas.width, offCanvas.height);
+        offCtx.drawImage(originalImage, 0, s.top, offCanvas.width, s.height, 0, 0, offCanvas.width, offCanvas.height);
+        const ext = fmt === 'image/png' ? 'png' : 'jpg';
+        const dataUrl = offCanvas.toDataURL(fmt, fmt === 'image/jpeg' ? quality : undefined);
+        zip.file(`${prefix}_${('000'+(i+1)).slice(-3)}.${ext}`, dataUrl.split(',')[1], { base64: true });
+        btnDownload.textContent = `⏳ ${i+1}/${total}`;
+        await new Promise(r => setTimeout(r, 0));
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${prefix}_${total}片.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+      btnDownload.textContent = '✅ 已导出！';
+      setTimeout(() => { btnDownload.textContent = '📦 导出所有切片 (ZIP)'; btnDownload.disabled = false; }, 2500);
+    } catch(err) {
+      console.error(err); alert('导出失败: ' + err.message);
+      btnDownload.disabled = false; btnDownload.textContent = '📦 导出所有切片 (ZIP)';
+    }
+  });
+
+  window.addEventListener('resize', () => { if (originalImage) { drawLinesOnCanvas(); syncDragLinePositions(); } });
+})();
+</script>
+</body>
+</html>

@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>百库内容智能工具汇集</title>
+    <title>百库智能工具汇集</title>
     <meta
       name="description"
-      content="BUYCOOR Tool Center，内容智能工具汇集。"
+      content="BUYCOOR Tool Center，智能工具汇集。"
     />
     <meta name="robots" content="noindex,nofollow,noarchive,noimageindex" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -377,13 +377,14 @@
         display: block;
       }
       .hero-title {
-        max-width: 1160px;
+        max-width: 1040px;
         font-family:
-          "Arial Black", Impact, Inter, "PingFang SC", "Microsoft YaHei",
-          sans-serif;
-        font-size: clamp(74px, 9.6vw, 150px);
+          "Source Han Sans CN Heavy", "Source Han Sans CN",
+          "Noto Sans CJK SC", "思源黑体 CN", "思源黑体", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        font-size: clamp(66px, 8.4vw, 128px);
         font-weight: 900;
-        line-height: 0.86;
+        line-height: 0.9;
         color: #fff;
         text-align: center;
         text-wrap: balance;
@@ -397,14 +398,14 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin: 34px auto 0;
-        padding: 11px 34px 13px;
+        margin: 28px auto 0;
+        padding: 8px 28px 10px;
         border-radius: 8px;
         background: #fff;
         color: #050506;
-        font-size: clamp(30px, 4.1vw, 62px);
+        font-size: clamp(26px, 3.35vw, 48px);
         font-weight: 820;
-        line-height: 1.04;
+        line-height: 1;
         box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
         white-space: nowrap;
       }
@@ -1028,15 +1029,15 @@
           word-break: break-all;
         }
         .hero-title {
-          font-size: clamp(46px, 14.5vw, 78px);
-          line-height: 0.9;
+          font-size: clamp(42px, 13vw, 68px);
+          line-height: 0.95;
           word-break: normal;
         }
         .hero-badge {
-          margin-top: 24px;
+          margin-top: 20px;
           max-width: 100%;
-          padding: 9px 18px 11px;
-          font-size: clamp(26px, 9vw, 38px);
+          padding: 7px 16px 9px;
+          font-size: clamp(24px, 8vw, 34px);
           white-space: normal;
         }
         .hero {
@@ -1121,10 +1122,10 @@
     ></canvas>
     <div class="page">
       <header class="site-header reveal">
-        <button class="brand" type="button" aria-label="百库内容智能工具汇集">
+        <button class="brand" type="button" aria-label="百库智能工具汇集">
           <span class="brand-mark">BK</span>
           <span>
-            <span class="brand-name">百库内容智能工具汇集</span>
+            <span class="brand-name">百库智能工具汇集</span>
             <span class="brand-sub">Content Intelligence</span>
           </span>
         </button>
@@ -1233,7 +1234,7 @@
               <span>BUYCOOR</span> <span>Tool Center</span>
             </h1>
             <p class="hero-badge reveal" style="--delay: 180ms">
-              内容智能工具汇集
+              智能工具汇集
             </p>
             <div class="hero-actions reveal" style="--delay: 360ms">
               <div
@@ -1612,44 +1613,6 @@
         window.addEventListener("pointerleave", () => {
           pointer.active = !1;
         }));
-      let wheelPageLocked = !1,
-        wheelUnlockTimer = 0;
-      document.addEventListener(
-        "wheel",
-        (t) => {
-          if (
-            t.ctrlKey ||
-            Math.abs(t.deltaY) < 8 ||
-            Math.abs(t.deltaX) > Math.abs(t.deltaY)
-          )
-            return;
-          const e = document.scrollingElement || document.documentElement,
-            o = e.scrollHeight - e.clientHeight;
-          if (o <= 0) return;
-          if (wheelPageLocked) {
-            t.preventDefault();
-            return;
-          }
-          const r = Math.sign(t.deltaY),
-            a = Math.max(window.innerHeight || 0, e.clientHeight),
-            i = Math.min(o, Math.max(0, e.scrollTop + r * a));
-          ((wheelPageLocked = !0),
-            window.clearTimeout(wheelUnlockTimer),
-            window.requestAnimationFrame(() => {
-              window.scrollTo({
-                top: i,
-                behavior: reduceMotion ? "auto" : "smooth",
-              });
-            }),
-            (wheelUnlockTimer = window.setTimeout(
-              () => {
-                wheelPageLocked = !1;
-              },
-              reduceMotion ? 140 : 620,
-            )));
-        },
-        { capture: !0, passive: !1 },
-      );
       const observer = new IntersectionObserver(
         (t) => {
           t.forEach((t) => {
