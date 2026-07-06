@@ -187,6 +187,9 @@
         backdrop-filter: blur(18px);
       }
       .nav-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         min-height: 34px;
         padding: 0 14px;
         border: 1px solid transparent;
@@ -228,69 +231,6 @@
       .site-nav .nav-button {
         min-height: 40px;
         padding: 0 18px;
-      }
-      .nav-group {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
-      .promo-menu {
-        position: absolute;
-        top: calc(100% + 9px);
-        left: 50%;
-        z-index: 18;
-        display: grid;
-        min-width: 112px;
-        gap: 4px;
-        padding: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.13);
-        border-radius: var(--radius);
-        background: rgba(6, 7, 8, 0.94);
-        box-shadow:
-          0 20px 56px rgba(0, 0, 0, 0.36),
-          inset 0 1px 0 rgba(255, 255, 255, 0.09);
-        backdrop-filter: blur(18px);
-        opacity: 0;
-        pointer-events: none;
-        transform: translate(-50%, -6px) scale(0.98);
-        transition:
-          opacity 180ms var(--ease),
-          transform 180ms var(--ease),
-          visibility 180ms var(--ease);
-        visibility: hidden;
-      }
-      .nav-group.is-open .promo-menu,
-      .promo-menu.is-open {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translate(-50%, 0) scale(1);
-        visibility: visible;
-      }
-      .promo-sub-button {
-        min-height: 32px;
-        padding: 0 16px;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        background: 0 0;
-        color: var(--muted);
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 650;
-        line-height: 1;
-        text-align: center;
-        white-space: nowrap;
-        transition:
-          transform 180ms var(--ease),
-          border-color 180ms var(--ease),
-          background 180ms var(--ease),
-          color 180ms var(--ease);
-      }
-      .promo-sub-button.is-active,
-      .promo-sub-button:hover {
-        transform: translateY(-1px);
-        border-color: rgba(215, 231, 232, 0.22);
-        background: rgba(255, 255, 255, 0.1);
-        color: var(--text);
       }
       .header-actions {
         display: flex;
@@ -1136,74 +1076,7 @@
           <button class="nav-button" type="button" data-filter="设计">
             设计
           </button>
-          <span class="nav-group" data-promo-group>
-            <button
-              class="nav-button"
-              type="button"
-              data-filter="推广"
-              data-has-submenu="true"
-              aria-expanded="false"
-              aria-controls="promoSubmenu"
-            >
-              推广
-            </button>
-            <span
-              class="promo-menu"
-              id="promoSubmenu"
-              role="menu"
-              aria-label="推广子分类"
-              aria-hidden="true"
-            >
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="TM"
-                role="menuitem"
-              >
-                TM
-              </button>
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="JD"
-                role="menuitem"
-              >
-                JD
-              </button>
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="DY"
-                role="menuitem"
-              >
-                DY
-              </button>
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="RTB"
-                role="menuitem"
-              >
-                RTB
-              </button>
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="部门课程"
-                role="menuitem"
-              >
-                部门课程
-              </button>
-              <button
-                class="promo-sub-button"
-                type="button"
-                data-promo-sub="ISV"
-                role="menuitem"
-              >
-                ISV
-              </button>
-            </span>
-          </span>
+          <a class="nav-button" href="http://10.242.196.34:8080">推广</a>
           <button class="nav-button" type="button" data-filter="内容">
             内容
           </button>
@@ -1630,10 +1503,6 @@
           });
         }));
       const navButtons = document.querySelectorAll("[data-filter]"),
-        promoGroup = document.querySelector("[data-promo-group]"),
-        promoButton = document.querySelector("[data-has-submenu]"),
-        promoMenu = document.getElementById("promoSubmenu"),
-        promoSubButtons = document.querySelectorAll("[data-promo-sub]"),
         cards = document.querySelectorAll(".tool-card"),
         toolsSection = document.getElementById("tools"),
         searchTyping = document.getElementById("searchTyping");
@@ -1673,17 +1542,6 @@
         };
         r();
       }
-      function setPromoMenu(t) {
-        promoGroup &&
-          promoButton &&
-          (promoGroup.classList.toggle("is-open", t),
-          promoMenu?.classList.toggle("is-open", t),
-          promoButton.setAttribute("aria-expanded", String(t)),
-          promoMenu?.setAttribute("aria-hidden", String(!t)));
-      }
-      function clearPromoSubActive() {
-        promoSubButtons.forEach((t) => t.classList.remove("is-active"));
-      }
       function cardMatchesFilter(t, e) {
         if ("all" === e) return !0;
         const o = (t.dataset.navGroups || "")
@@ -1703,7 +1561,6 @@
         (document.querySelectorAll(".nav-button").forEach((e) => {
           e.classList.toggle("is-active", e.dataset.filter === t);
         }),
-          "推广" !== t && (setPromoMenu(!1), clearPromoSubActive()),
           cards.forEach((e) => {
             const o = cardMatchesFilter(e, t);
             e.classList.toggle("is-hidden", !o);
@@ -1739,29 +1596,8 @@
       }),
         navButtons.forEach((t) => {
           t.addEventListener("click", () => {
-            if ("true" === t.dataset.hasSubmenu) {
-              const e = !promoGroup?.classList.contains("is-open");
-              return (applyFilter(t.dataset.filter, !1), void setPromoMenu(e));
-            }
             applyFilter(t.dataset.filter);
           });
-        }),
-        promoGroup?.addEventListener("click", (t) => {
-          t.stopPropagation();
-        }),
-        promoSubButtons.forEach((t) => {
-          t.addEventListener("click", () => {
-            (clearPromoSubActive(),
-              t.classList.add("is-active"),
-              applyFilter("推广", !1),
-              setPromoMenu(!0));
-          });
-        }),
-        document.addEventListener("click", (t) => {
-          promoGroup && !promoGroup.contains(t.target) && setPromoMenu(!1);
-        }),
-        document.addEventListener("keydown", (t) => {
-          "Escape" === t.key && setPromoMenu(!1);
         }));
       const modeToggle = document.getElementById("modeToggle");
       modeToggle.addEventListener("click", () => {
